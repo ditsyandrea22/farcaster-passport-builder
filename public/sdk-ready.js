@@ -34,6 +34,19 @@
         return false;
       }
 
+      // Log SDK context info if available
+      if (sdk.context) {
+        console.log('📋 SDK Context Available:', {
+          hasUser: !!sdk.context.user,
+          hasClient: !!sdk.context.client,
+          hasLocation: !!sdk.context.location,
+          user: sdk.context.user,
+          client: sdk.context.client
+        });
+      } else {
+        console.log('⏳ SDK.context not available yet (' + source + ')');
+      }
+
       // Check if ready() method exists
       if (!sdk.actions || !sdk.actions.ready) {
         console.log('⏳ SDK found but ready() not available (' + source + ')');

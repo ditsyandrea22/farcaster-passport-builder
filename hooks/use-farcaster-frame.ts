@@ -218,6 +218,7 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
           hasFarcaster: !!farcaster,
           hasSDK: !!(farcaster?.sdk),
           hasContext: !!(farcaster?.sdk?.context),
+          contextValue: farcaster?.sdk?.context,
           timestamp: Date.now()
         })
 
@@ -227,13 +228,18 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
           setIsFrame(true)
           
           // Get context from SDK (sdk.context is the official way)
+          // Context might be available or might load async, so we check it
           const context = farcaster.sdk.context
+          
+          // Even if context is not immediately available, we're in a frame
+          // because the SDK exists. Try to get what we can.
           if (context) {
             console.log("📋 SDK Context available:", {
               hasUser: !!context.user,
-              hasWallet: !!context.user, // Wallet info comes through user in SDK
               hasLocation: !!context.location,
-              hasClient: !!context.client
+              hasClient: !!context.client,
+              user: context.user,
+              client: context.client
             })
             
             // Build frameContext from SDK context
@@ -248,45 +254,53 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
             }
             
             setFrameContext(builtContext)
+          } else {
+            console.log("⏳ SDK context not ready yet, will retry")
+          }
+          
+          // Try to get wallet - this is available via SDK in Mini Apps
+          if (farcaster.sdk.wallet) {
+            console.log("💰 SDK wallet available:", farcaster.sdk.wallet)
+            const sdkWallet = farcaster.sdk.wallet
             
-            // Try to get wallet from SDK
-            if (farcaster.sdk.wallet) {
-              console.log("💰 SDK wallet available")
-              const sdkWallet = farcaster.sdk.wallet
-              
-              if (sdkWallet.address) {
-                setWallet({
-                  address: sdkWallet.address,
-                  chainId: sdkWallet.chainId || "8453",
-                  isConnected: true,
-                  connect: async () => {},
-                  sendTransaction: async (tx) => {
-                    try {
-                      const result = await enhancedWalletManager.sendTransaction(tx)
-                      return result.hash
-                    } catch (error) {
-                      console.error("Transaction failed:", error)
-                      throw error
-                    }
+            if (sdkWallet.address) {
+              console.log("✅ Got wallet address from SDK:", sdkWallet.address)
+              setWallet({
+                address: sdkWallet.address,
+                chainId: sdkWallet.chainId || "8453",
+                isConnected: true,
+                connect: async () => {},
+                sendTransaction: async (tx) => {
+                  try {
+                    const result = await enhancedWalletManager.sendTransaction(tx)
+                    return result.hash
+                  } catch (error) {
+                    console.error("Transaction failed:", error)
+                    throw error
                   }
-                })
-                
-                setWalletState({
-                  isConnected: true,
-                  address: sdkWallet.address,
-                  chainId: sdkWallet.chainId || "8453",
-                  balance: null,
-                  networkName: "Base",
-                  lastUpdated: Date.now()
-                })
-                
-                console.log("✅ Wallet connected from SDK:", sdkWallet.address)
-              }
-            } else {
-              console.log("ℹ️ SDK wallet not available yet")
+                }
+              })
+              
+              setWalletState({
+                isConnected: true,
+                address: sdkWallet.address,
+                chainId: sdkWallet.chainId || "8453",
+                balance: null,
+                networkName: "Base",
+                lastUpdated: Date.now()
+              })
+              
+              console.log("✅ Wallet connected from SDK:", sdkWallet.address)
             }
           } else {
-            console.log("⚠️ SDK context not available")
+            console.log("ℹ️ SDK wallet not available, will check enhancedWalletManager")
+          }
+          
+          // If context not ready yet, retry
+          if (!context && detectionAttempts.current < maxAttempts) {
+            console.log(`⏳ Waiting for SDK context, attempt ${detectionAttempts.current}/${maxAttempts}`)
+            await new Promise(resolve => setTimeout(resolve, 300))
+            return detectFrame()
           }
         } else if (detectionAttempts.current < maxAttempts) {
           // SDK not ready yet, retry
