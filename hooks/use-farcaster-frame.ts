@@ -217,8 +217,10 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
         console.log(`🔍 Frame detection attempt ${detectionAttempts.current}:`, {
           hasFarcaster: !!farcaster,
           hasSDK: !!(farcaster?.sdk),
+          hasActions: !!(farcaster?.sdk?.actions),
+          hasReady: !!(farcaster?.sdk?.actions?.ready),
           hasContext: !!(farcaster?.sdk?.context),
-          contextValue: farcaster?.sdk?.context,
+          contextType: typeof (farcaster?.sdk?.context),
           timestamp: Date.now()
         })
 
@@ -227,20 +229,21 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
           console.log("✅ Farcaster SDK found")
           setIsFrame(true)
           
-          // Get context from SDK (sdk.context is the official way)
-          // Context might be available or might load async, so we check it
+          // Try to get context from SDK (might be undefined initially)
           const context = farcaster.sdk.context
           
-          // Even if context is not immediately available, we're in a frame
-          // because the SDK exists. Try to get what we can.
-          if (context) {
-            console.log("📋 SDK Context available:", {
-              hasUser: !!context.user,
-              hasLocation: !!context.location,
-              hasClient: !!context.client,
-              user: context.user,
-              client: context.client
-            })
+          // Log whatever context we have (even if undefined)
+          console.log("📋 SDK Context:", {
+            exists: !!context,
+            type: typeof context,
+            user: context?.user,
+            client: context?.client,
+            location: context?.location,
+          })
+          
+          // If context exists, use it
+          if (context && typeof context === 'object') {
+            console.log("✅ Using SDK context data")
             
             // Build frameContext from SDK context
             const builtContext: FrameContext = {
@@ -250,21 +253,28 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
                 displayName: context.user.displayName || '',
                 pfpUrl: context.user.pfpUrl
               } : undefined,
-              client: context.client
+              client: context.client,
+              wallet: context.wallet
             }
             
             setFrameContext(builtContext)
           } else {
-            console.log("⏳ SDK context not ready yet, will retry")
+            // Context not ready yet, but we found SDK so we're definitely in frame
+            console.log("⏳ SDK context not ready yet, will retry for context")
           }
           
-          // Try to get wallet - this is available via SDK in Mini Apps
+          // Try to get wallet from SDK
           if (farcaster.sdk.wallet) {
-            console.log("💰 SDK wallet available:", farcaster.sdk.wallet)
+            console.log("💰 SDK wallet detected:", {
+              hasAddress: !!farcaster.sdk.wallet.address,
+              address: farcaster.sdk.wallet.address,
+              chainId: farcaster.sdk.wallet.chainId
+            })
+            
             const sdkWallet = farcaster.sdk.wallet
             
             if (sdkWallet.address) {
-              console.log("✅ Got wallet address from SDK:", sdkWallet.address)
+              console.log("✅ Wallet found with address:", sdkWallet.address)
               setWallet({
                 address: sdkWallet.address,
                 chainId: sdkWallet.chainId || "8453",
@@ -272,10 +282,11 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
                 connect: async () => {},
                 sendTransaction: async (tx) => {
                   try {
+                    console.log("🔄 Sending transaction via enhancedWalletManager")
                     const result = await enhancedWalletManager.sendTransaction(tx)
                     return result.hash
                   } catch (error) {
-                    console.error("Transaction failed:", error)
+                    console.error("❌ Transaction failed:", error)
                     throw error
                   }
                 }
@@ -290,27 +301,72 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
                 lastUpdated: Date.now()
               })
               
-              console.log("✅ Wallet connected from SDK:", sdkWallet.address)
+              console.log("✅ Wallet state updated from SDK")
+            } else if (detectionAttempts.current < maxAttempts) {
+              // Wallet not ready, keep retrying
+              console.log(`⏳ Wallet not connected yet (attempt ${detectionAttempts.current}/${maxAttempts})`)
+              await new Promise(resolve => setTimeout(resolve, 500))
+              return detectFrame()
             }
           } else {
-            console.log("ℹ️ SDK wallet not available, will check enhancedWalletManager")
+            console.log("⏳ SDK wallet object not available, checking enhancedWalletManager")
+            
+            // Try to get wallet from our enhanced manager as fallback
+            const state = await enhancedWalletManager.getStateAsync()
+            if (state.isConnected && state.address) {
+              console.log("✅ Got wallet from enhancedWalletManager:", state.address)
+              setWallet({
+                address: state.address,
+                chainId: state.chainId || "8453",
+                isConnected: true,
+                connect: async () => {},
+                sendTransaction: async (tx) => {
+                  const result = await enhancedWalletManager.sendTransaction(tx)
+                  return result.hash
+                }
+              })
+              setWalletState(state)
+            } else if (detectionAttempts.current < maxAttempts) {
+              // Keep retrying
+              console.log(`⏳ No wallet from either source yet (attempt ${detectionAttempts.current}/${maxAttempts})`)
+              await new Promise(resolve => setTimeout(resolve, 500))
+              return detectFrame()
+            }
           }
           
-          // If context not ready yet, retry
-          if (!context && detectionAttempts.current < maxAttempts) {
-            console.log(`⏳ Waiting for SDK context, attempt ${detectionAttempts.current}/${maxAttempts}`)
-            await new Promise(resolve => setTimeout(resolve, 300))
+          // We found SDK, so we're definitely in frame
+          // Keep retrying for wallet if we don't have it yet
+          if (!wallet && detectionAttempts.current < maxAttempts) {
+            console.log(`⏳ Still waiting for wallet (attempt ${detectionAttempts.current}/${maxAttempts})`)
+            await new Promise(resolve => setTimeout(resolve, 500))
             return detectFrame()
           }
         } else if (detectionAttempts.current < maxAttempts) {
-          // SDK not ready yet, retry
-          console.log(`⏳ SDK not ready, attempt ${detectionAttempts.current}/${maxAttempts}`)
-          await new Promise(resolve => setTimeout(resolve, 300))
+          // SDK not ready yet, retry more aggressively
+          console.log(`⏳ SDK not found, retrying (attempt ${detectionAttempts.current}/${maxAttempts})`)
+          await new Promise(resolve => setTimeout(resolve, 200))
           return detectFrame()
         } else {
           // Max attempts reached
           setIsFrame(false)
-          console.log("🌐 Not in Frame context after max attempts, running as web app")
+          console.log("🌐 SDK not found after max attempts, running as web app")
+          
+          // Try to use fallback wallet manager
+          const fallbackState = await enhancedWalletManager.getStateAsync()
+          if (fallbackState.isConnected && fallbackState.address) {
+            console.log("📱 Using fallback wallet from enhancedWalletManager")
+            setWallet({
+              address: fallbackState.address,
+              chainId: fallbackState.chainId || "8453",
+              isConnected: true,
+              connect: async () => {},
+              sendTransaction: async (tx) => {
+                const result = await enhancedWalletManager.sendTransaction(tx)
+                return result.hash
+              }
+            })
+            setWalletState(fallbackState)
+          }
         }
       }
     } catch (err) {

@@ -99,6 +99,20 @@ export class EnhancedWalletManager {
     return EnhancedWalletManager.instance
   }
 
+  // Get current wallet state without triggering detection
+  getState(): WalletConnectionState {
+    return this.currentState
+  }
+
+  // Get state asynchronously, will attempt detection if needed
+  async getStateAsync(): Promise<WalletConnectionState> {
+    if (this.currentState.isConnected) {
+      return this.currentState
+    }
+    // If not connected, try detection once
+    return await this.detectWallet()
+  }
+
   // Simplified wallet detection with timeout
   async detectWallet(): Promise<WalletConnectionState> {
     if (typeof window === 'undefined' || this.isInitializing) {

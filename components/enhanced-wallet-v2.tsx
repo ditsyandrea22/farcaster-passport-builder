@@ -193,7 +193,12 @@ export function EnhancedWalletV2({
     )
   }
 
-  // Show Frame detection issue
+  // If we have a wallet, show it regardless of frame status (wallet proves we're in frame)
+  if (wallet?.isConnected || walletState?.isConnected) {
+    return renderWalletInfo()
+  }
+
+  // Show Frame detection issue only if we truly can't find any wallet/SDK
   if (!isFrame) {
     return (
       <Card className={cn("p-4 bg-yellow-50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-800", className)}>
@@ -201,7 +206,7 @@ export function EnhancedWalletV2({
           <span>⚠️</span>
           <div className="flex-1">
             <p className="text-sm font-semibold">Not in Frame context</p>
-            <p className="text-xs">Please open this app in Farcaster Frame</p>
+            <p className="text-xs">Please open this app in Farcaster Frame or connect a wallet</p>
           </div>
           {enableRetry && (
             <Button
@@ -432,4 +437,8 @@ export function useEnhancedWallet() {
     connect: connectEnhanced,
     onWalletEvent
   }
+}
+
+function renderWalletInfo() {
+  throw new Error("Function not implemented.")
 }

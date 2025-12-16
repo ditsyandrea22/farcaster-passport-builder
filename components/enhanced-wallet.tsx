@@ -219,7 +219,67 @@ export function EnhancedWallet({
     )
   }
 
-  // Show Frame detection issue
+  // If we have a wallet, show it regardless of frame status (wallet proves we're in frame)
+  if (isWalletConnected && walletAddress) {
+    return (
+      <Card className={cn("p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-purple-200/50 dark:border-purple-800/50", className)}>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold flex items-center gap-2">
+              🔗 Wallet
+              <Badge variant="secondary" className="text-xs">
+                Connected
+              </Badge>
+            </h3>
+            
+            {showNetwork && networkInfo && (
+              <Badge variant="outline" className="text-xs">
+                {networkInfo.name || "Base"}
+              </Badge>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-mono">{formatAddress(walletAddress)}</p>
+                {showBalance && balance && (
+                  <p className="text-xs text-muted-foreground">
+                    Balance: {formatBalance(balance)}
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  onClick={copyAddress}
+                  variant="outline"
+                  size="sm"
+                >
+                  📋 Copy
+                </Button>
+                <Button
+                  onClick={handleDisconnect}
+                  variant="outline"
+                  size="sm"
+                >
+                  🔄 Refresh
+                </Button>
+              </div>
+            </div>
+            
+            <div className="text-xs text-muted-foreground">
+              Network: {wallet?.chainId || "Base"} • 
+              Frame: {isFrame ? "Yes" : "No"} • 
+              Retry Count: {retryCount}
+            </div>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  // Show Frame detection issue only if we truly can't find any wallet/SDK
   if (!isFrame) {
     return (
       <Card className={cn("p-4 bg-yellow-50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-800", className)}>
@@ -227,7 +287,7 @@ export function EnhancedWallet({
           <span>⚠️</span>
           <div className="flex-1">
             <p className="text-sm font-semibold">Not in Frame context</p>
-            <p className="text-xs">Please open this app in Farcaster Frame</p>
+            <p className="text-xs">Please open this app in Farcaster Frame or connect a wallet</p>
           </div>
           {enableRetry && (
             <Button
