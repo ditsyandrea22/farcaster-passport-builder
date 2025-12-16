@@ -6,14 +6,24 @@
   },
   "frame": {
     "version": "next",
-    "imageUrl": "/api/frame/image",
+    "name": "Farcaster Reputation Passport",
+    "iconUrl": "https://farcaster-passport-builder.vercel.app/icon.jpg",
+    "homeUrl": "https://farcaster-passport-builder.vercel.app",
+    "imageUrl": "https://farcaster-passport-builder.vercel.app/api/frame/image",
+    "buttonTitle": "Check Reputation",
+    "splashImageUrl": "https://farcaster-passport-builder.vercel.app/splash.jpg",
+    "splashBackgroundColor": "#8b5cf6",
+    "description": "Build and showcase your decentralized reputation on Farcaster",
+    "subtitle": "Reputation Passport Builder",
+    "tagline": "Your decentralized reputation identity",
+    "primaryCategory": "social",
     "button": {
       "title": "Check Reputation",
       "action": {
         "type": "launch_frame",
         "name": "Farcaster Reputation Passport",
-        "url": "/splash.jpg",
-        "splashImageUrl": "/splash.jpg",
+        "url": "https://farcaster-passport-builder.vercel.app/splash.jpg",
+        "splashImageUrl": "https://farcaster-passport-builder.vercel.app/splash.jpg",
         "splashBackgroundColor": "#8b5cf6"
       }
     }
