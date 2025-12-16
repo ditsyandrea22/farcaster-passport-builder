@@ -13,10 +13,10 @@ export const metadata: Metadata = {
   generator: "Farcaster Passport Builder",
   other: {
     "fc:frame": "vNext",
-    "fc:frame:image": "https://your-domain.com/api/frame/image",
+    "fc:frame:image": "/api/frame/image",
     "fc:frame:button:1": "Check Reputation",
     "fc:frame:button:1:action": "link",
-    "fc:frame:button:1:target": "https://your-domain.com",
+    "fc:frame:button:1:target": "/splash.jpg",
   },
   icons: {
     icon: [

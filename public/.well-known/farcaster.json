@@ -1,19 +1,19 @@
 {
   "accountAssociation": {
-    "header": "eyJmaWQiOjEsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0",
-    "payload": "eyJkb21haW4iOiJ5b3VyLWRvbWFpbi5jb20ifQ",
-    "signature": "MHg..."
+    "header": "eyJmaWQiOjI1ODI1MCwidHlwZSI6ImF1dGgiLCJrZXkiOiIweGEwNmJjRTYyNTU2NjVmQzFGODVBMDU5NzVhOWI2MzgwYjRlRTQ4ODkifQ",
+    "payload": "eyJkb21haW4iOiJmYXJjYXN0ZXItcGFzc3BvcnQtYnVpbGRlci52ZXJjZWwuYXBwIn0",
+    "signature": "P8wyN0e2aJcgdsRchMx3p0KV7a46kgNQfFlVlLA9tI5riSglpF8CYncy9QXN3Hn3zypMxk4Z0ataRHIQ7A3S1hs="
   },
   "frame": {
     "version": "next",
-    "imageUrl": "https://your-domain.com/api/frame/image",
+    "imageUrl": "/api/frame/image",
     "button": {
       "title": "Check Reputation",
       "action": {
         "type": "launch_frame",
         "name": "Farcaster Reputation Passport",
-        "url": "https://your-domain.com",
-        "splashImageUrl": "https://your-domain.com/splash.jpg",
+        "url": "/splash.jpg",
+        "splashImageUrl": "/splash.jpg",
         "splashBackgroundColor": "#8b5cf6"
       }
     }
