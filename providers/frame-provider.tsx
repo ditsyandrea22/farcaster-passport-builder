@@ -100,27 +100,54 @@ export function FrameProvider({ children }: FrameProviderProps) {
   const walletAddress = wallet?.address || null
   const isWalletConnected = wallet?.isConnected || false
 
-  // Initialize SDK features
+  // Initialize SDK features with conflict protection
   useEffect(() => {
     const initializeSDK = async () => {
-      if (typeof window !== 'undefined' && (window as any).farcaster) {
-        const farcaster = (window as any).farcaster
+      try {
+        console.log("🚀 Initializing FarCaster SDK with conflict protection...")
         
-        // Initialize SDK
-        if (farcaster.sdk) {
-          setSDK(farcaster.sdk)
-          setActions(farcaster.sdk.actions)
+        if (typeof window !== 'undefined' && (window as any).farcaster) {
+          // Import conflict manager to prevent external wallet conflicts
+          const { walletConflictManager } = await import('@/lib/wallet-conflict-manager')
           
-          // Initialize notifications
-          if (farcaster.notifications) {
-            setNotifications(farcaster.notifications)
-          }
+          const farcaster = (window as any).farcaster
           
-          // Initialize share
-          if (farcaster.share) {
-            setShare(farcaster.share)
+          console.log("✅ FarCaster SDK detected with conflict protection:", {
+            hasFrameContext: !!farcaster.frameContext,
+            hasWallet: !!farcaster.wallet,
+            hasSDK: !!farcaster.sdk,
+            hasMiniApp: !!farcaster.miniApp,
+            conflictProtection: walletConflictManager.isFrameEnvironment()
+          })
+          
+          // Initialize SDK
+          if (farcaster.sdk) {
+            setSDK(farcaster.sdk)
+            setActions(farcaster.sdk.actions)
+            
+            // Initialize notifications
+            if (farcaster.notifications) {
+              setNotifications(farcaster.notifications)
+            }
+            
+            // Initialize share
+            if (farcaster.share) {
+              setShare(farcaster.share)
+            }
+            
+            // Set up SDK ready handler
+            if (farcaster.sdk.actions?.ready) {
+              try {
+                farcaster.sdk.actions.ready()
+                console.log("✅ SDK ready handler called")
+              } catch (readyError) {
+                console.warn("SDK ready call failed:", readyError)
+              }
+            }
           }
         }
+      } catch (error) {
+        console.error("❌ SDK initialization failed:", error)
       }
     }
 

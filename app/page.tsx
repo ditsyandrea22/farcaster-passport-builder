@@ -2,6 +2,7 @@
 
 import dynamicImport from 'next/dynamic'
 import { ThemeToggle } from "@/components/theme-toggle"
+import { WalletErrorHandler } from "@/components/wallet-error-handler"
 
 // Dynamic import to avoid SSR issues with Frame hooks
 const MobileOptimizedPassportGenerator = dynamicImport(
@@ -49,6 +50,9 @@ export default function Home() {
           </div>
 
           <MobileOptimizedPassportGenerator />
+
+          {/* Wallet Error Handler */}
+          <WalletErrorHandler />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mt-8 md:mt-12 animate-fade-in-up px-4">
             <div className="group p-4 md:p-6 bg-white/80 dark:bg-gray-900/80 rounded-xl backdrop-blur-md border border-purple-200/50 dark:border-purple-800/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
