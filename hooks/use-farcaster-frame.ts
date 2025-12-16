@@ -7,7 +7,7 @@ interface FrameContext {
     fid: number
     username: string
     displayName: string
-   pfpUrl?: string
+    pfpUrl?: string
   }
   wallet?: {
     address: string
@@ -39,12 +39,54 @@ interface UseFarcasterFrameReturn {
   error: string | null
 }
 
+// Hook to initialize Frame SDK and call sdk.actions.ready()
+function useFrameSDK() {
+  const [isSDKReady, setIsSDKReady] = useState(false)
+
+  useEffect(() => {
+    const initializeSDK = async () => {
+      try {
+        if (typeof window !== 'undefined' && (window as any).farcaster?.sdk) {
+          // Wait for the SDK to be fully loaded
+          await new Promise((resolve) => {
+            const checkSDK = () => {
+              if ((window as any).farcaster?.sdk?.actions?.ready) {
+                resolve(true)
+              } else {
+                setTimeout(checkSDK, 100)
+              }
+            }
+            checkSDK()
+          })
+
+          // Call sdk.actions.ready() to indicate the app is ready
+          if ((window as any).farcaster?.sdk?.actions?.ready) {
+            await (window as any).farcaster.sdk.actions.ready()
+            setIsSDKReady(true)
+            console.log("Frame SDK initialized successfully")
+          }
+        }
+      } catch (err) {
+        console.error("Failed to initialize Frame SDK:", err)
+      }
+    }
+
+    // Initialize SDK when component mounts
+    initializeSDK()
+  }, [])
+
+  return isSDKReady
+}
+
 export function useFarcasterFrame(): UseFarcasterFrameReturn {
   const [isFrame, setIsFrame] = useState(false)
   const [frameContext, setFrameContext] = useState<FrameContext | null>(null)
   const [wallet, setWallet] = useState<FrameWallet | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Initialize Frame SDK
+  const isSDKReady = useFrameSDK()
 
   useEffect(() => {
     const detectFrame = async () => {
