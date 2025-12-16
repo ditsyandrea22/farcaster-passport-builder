@@ -114,9 +114,18 @@ export function EnhancedPassportGenerator() {
   }
 
   const handleMint = async () => {
-    if (!passport) return
+    if (!passport) {
+      showError("No Passport", "Generate your passport first")
+      return
+    }
 
-    if (!isWalletConnected || !wallet) {
+    // Check wallet connection
+    if (!wallet) {
+      showError("Wallet Required", "Please wait for wallet to load")
+      return
+    }
+
+    if (!wallet.address && !isFrame) {
       showError("Wallet Required", "Please connect your wallet to mint")
       return
     }
@@ -125,8 +134,16 @@ export function EnhancedPassportGenerator() {
     setMintResult(null)
     
     try {
+      console.log("🚀 Starting mint process...", {
+        fid: passport.fid,
+        walletAddress: wallet.address,
+        isFrame
+      })
+
       // Step 1: Get transaction data from API
       const mintUrl = `/api/mint?fid=${passport.fid}${wallet.address ? `&userAddress=${wallet.address}` : ''}`
+      console.log("📡 Fetching transaction data from:", mintUrl)
+      
       const response = await fetch(mintUrl, {
         method: "POST",
         headers: {
@@ -134,56 +151,48 @@ export function EnhancedPassportGenerator() {
         },
       })
       
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      }
+      
       const txData = await response.json()
+      console.log("📋 Transaction data received:", txData)
       
       if (txData.error) {
         throw new Error(txData.error)
       }
 
-      console.log("Mint transaction data received:", txData)
-
       // Step 2: Send transaction through wallet
       let txHash = ""
       
       if (isFrame) {
-        // Frame wallet minting - try multiple methods
+        console.log("🎯 Frame wallet minting...")
+        
+        // Frame wallet minting - simplified approach
         try {
-          // Method 1: Direct wallet transaction
-          if (wallet?.sendTransaction && txData.params) {
-            txHash = await wallet.sendTransaction({
-              to: txData.params.to,
-              data: txData.params.data,
-              value: txData.params.value,
-            })
+          // Prepare transaction data
+          const txParams = txData.params || {
+            to: txData.to,
+            data: txData.data,
+            value: txData.value
           }
-          // Method 2: SDK transaction
-          else if ((window as any).farcaster?.sdk?.actions?.transaction) {
-            const result = await (window as any).farcaster.sdk.actions.transaction({
-              to: txData.params.to,
-              data: txData.params.data,
-              value: txData.params.value,
-            })
-            txHash = result?.hash || result
-          }
-          // Method 3: Direct transaction through SDK
-          else if ((window as any).farcaster?.sdk?.actions?.sendTransaction) {
-            const result = await (window as any).farcaster.sdk.actions.sendTransaction({
-              to: txData.params.to,
-              data: txData.params.data,
-              value: txData.params.value,
-            })
-            txHash = result?.hash || result
-          }
-          else {
-            throw new Error("No transaction method available in Frame SDK")
+
+          console.log("💳 Sending transaction with params:", txParams)
+          
+          // Use the wallet's sendTransaction method (now simplified)
+          if (wallet.sendTransaction) {
+            txHash = await wallet.sendTransaction(txParams)
+            console.log("✅ Transaction hash received:", txHash)
+          } else {
+            throw new Error("Wallet transaction method not available")
           }
           
-          success("Transaction Sent", `NFT minting initiated: ${txHash.slice(0, 10)}...`)
+          success("✅ Transaction Sent", `NFT minting initiated: ${txHash.slice(0, 10)}...`)
           
           setMintResult({
             success: true,
             txHash,
-            message: "NFT minting transaction sent successfully!",
+            message: "🎉 NFT minting transaction sent successfully!",
             shareData: txData.shareData
           })
           
@@ -191,34 +200,39 @@ export function EnhancedPassportGenerator() {
           
           // Reload transaction history after successful mint
           setTimeout(() => {
+            console.log("🔄 Reloading transaction history...")
             loadTransactionHistory(passport.fid)
           }, 2000)
           
         } catch (txErr) {
-          console.error("Frame transaction failed:", txErr)
-          throw new Error(`Frame transaction failed: ${txErr instanceof Error ? txErr.message : "Unknown error"}`)
+          console.error("❌ Frame transaction failed:", txErr)
+          const errorMsg = txErr instanceof Error ? txErr.message : "Unknown transaction error"
+          throw new Error(`Frame transaction failed: ${errorMsg}`)
         }
       } else {
+        console.log("🌐 Web app minting (external wallet)...")
+        
         // Web app minting - return transaction data for external wallet
         setMintResult({
           success: true,
           txData,
-          message: "Transaction data prepared. Please confirm in your wallet.",
+          message: "📋 Transaction data prepared. Please confirm in your wallet.",
           shareData: txData.shareData
         })
-        success("Transaction Ready", "Please confirm the transaction in your wallet")
+        success("📋 Transaction Ready", "Please confirm the transaction in your wallet")
       }
       
     } catch (err) {
-      console.error("Mint error:", err)
+      console.error("❌ Mint error:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to mint NFT"
-      showError("Mint Failed", errorMessage)
+      showError("❌ Mint Failed", errorMessage)
       setMintResult({
         success: false,
         error: errorMessage
       })
     } finally {
       setMinting(false)
+      console.log("🏁 Mint process completed")
     }
   }
 

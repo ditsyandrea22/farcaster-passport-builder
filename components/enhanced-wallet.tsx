@@ -41,7 +41,7 @@ export function EnhancedWallet({
   } = useFrame()
   const { success, error } = useNotifications()
 
-  // Enhanced wallet availability check
+  // Enhanced wallet availability check with more paths
   useEffect(() => {
     const checkWalletAvailability = () => {
       if (typeof window !== 'undefined') {
@@ -54,22 +54,27 @@ export function EnhancedWallet({
           // Direct wallet
           if (farcaster.wallet && farcaster.wallet.address) {
             hasWallet = true
+            console.log("💰 Wallet found: Direct path")
           }
           // SDK wallet
           else if (farcaster.sdk?.wallet && farcaster.sdk.wallet.address) {
             hasWallet = true
+            console.log("💰 Wallet found: SDK path")
           }
           // Frame context wallet
           else if (farcaster.frameContext?.wallet && farcaster.frameContext.wallet.address) {
             hasWallet = true
+            console.log("💰 Wallet found: FrameContext path")
           }
           // SDK context wallet
           else if (farcaster.sdk?.context?.wallet && farcaster.sdk.context.wallet.address) {
             hasWallet = true
+            console.log("💰 Wallet found: SDK Context path")
           }
           // SDK actions available (might have wallet access)
           else if (farcaster.sdk?.actions) {
             hasWallet = true
+            console.log("💰 Wallet found: SDK Actions path")
           }
         }
         
@@ -109,6 +114,8 @@ export function EnhancedWallet({
   }
 
   const handleConnect = async () => {
+    console.log("🔗 Handle connect called", { wallet, walletAvailable, walletAddress })
+    
     if (!wallet && !walletAvailable) {
       error("Wallet not available", "Please wait for the wallet to load or try refreshing")
       return

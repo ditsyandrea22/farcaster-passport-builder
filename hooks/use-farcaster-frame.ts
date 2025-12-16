@@ -66,11 +66,11 @@ function useFrameSDK() {
           if ((window as any).farcaster?.sdk?.actions?.ready) {
             await (window as any).farcaster.sdk.actions.ready()
             setIsSDKReady(true)
-            console.log("Frame SDK initialized successfully")
+            console.log("✅ Frame SDK initialized successfully")
           }
         }
       } catch (err) {
-        console.warn("SDK initialization warning:", err)
+        console.warn("⚠️ SDK initialization warning:", err)
         // Don't throw error, just continue without SDK
       }
     }
@@ -89,7 +89,7 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const detectionAttempts = useRef(0)
-  const maxAttempts = 15
+  const maxAttempts = 10
 
   // Initialize Frame SDK
   const isSDKReady = useFrameSDK()
@@ -104,7 +104,7 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
       if (typeof window !== 'undefined') {
         const farcaster = (window as any).farcaster
         
-        console.log(`Frame detection attempt ${detectionAttempts.current}:`, {
+        console.log(`🔍 Frame detection attempt ${detectionAttempts.current}:`, {
           hasFarcaster: !!farcaster,
           hasFrameContext: !!farcaster?.frameContext,
           hasWallet: !!farcaster?.wallet,
@@ -115,14 +115,33 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
 
         // Check for Frame context or wallet - try multiple paths
         const frameContext = farcaster?.frameContext
-        let wallet = farcaster?.wallet || farcaster?.sdk?.wallet || farcaster?.frameContext?.wallet
         
-        // Enhanced wallet detection
-        if (!wallet && farcaster?.sdk?.context?.wallet) {
+        // Enhanced wallet detection with multiple fallback paths
+        let wallet = null
+        
+        // Path 1: Direct wallet object
+        if (farcaster?.wallet?.address) {
+          wallet = farcaster.wallet
+          console.log("💰 Wallet found via direct path")
+        }
+        // Path 2: SDK wallet
+        else if (farcaster?.sdk?.wallet?.address) {
+          wallet = farcaster.sdk.wallet
+          console.log("💰 Wallet found via SDK path")
+        }
+        // Path 3: Frame context wallet
+        else if (farcaster?.frameContext?.wallet?.address) {
+          wallet = farcaster.frameContext.wallet
+          console.log("💰 Wallet found via frameContext path")
+        }
+        // Path 4: SDK context wallet
+        else if (farcaster?.sdk?.context?.wallet?.address) {
           wallet = farcaster.sdk.context.wallet
+          console.log("💰 Wallet found via SDK context path")
         }
         
-        if (frameContext || wallet || farcaster?.sdk) {
+        // If we have any Farcaster object, consider it a Frame environment
+        if (farcaster && (frameContext || wallet || farcaster?.sdk)) {
           setIsFrame(true)
           
           // Get frame context if available
@@ -138,63 +157,92 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
               isConnected: !!wallet.address,
               // FarCaster wallets are auto-connected, no manual connect needed
               connect: async () => {
-                // Refresh wallet state to get latest connection status
-                if (wallet?.address) {
+                console.log("🔗 Wallet connect called - refreshing wallet state")
+                // Try to get fresh wallet state
+                const farcaster = (window as any).farcaster
+                const freshWallet = farcaster?.wallet || farcaster?.sdk?.wallet || farcaster?.frameContext?.wallet
+                
+                if (freshWallet?.address) {
                   setWallet(prev => prev ? {
                     ...prev,
-                    address: wallet.address || prev.address,
-                    isConnected: !!wallet.address
+                    address: freshWallet.address || prev.address,
+                    isConnected: !!freshWallet.address
                   } : {
-                    address: wallet.address,
-                    chainId: wallet.chainId || "8453",
+                    address: freshWallet.address,
+                    chainId: freshWallet.chainId || "8453",
                     isConnected: true,
                     connect: async () => {},
                     sendTransaction: async () => { throw new Error("Transaction not supported") }
                   })
+                  console.log("✅ Wallet state refreshed")
+                } else {
+                  console.log("❌ No wallet address found on refresh")
                 }
               },
               sendTransaction: async (tx) => {
                 try {
-                  // Use FarCaster SDK actions for transaction
+                  console.log("💳 Attempting transaction:", tx)
+                  
+                  // Method 1: Direct SDK transaction (most reliable)
                   if ((window as any).farcaster?.sdk?.actions?.transaction) {
+                    console.log("📤 Using SDK transaction method")
                     const result = await (window as any).farcaster.sdk.actions.transaction(tx)
-                    return result?.hash || result
-                  } else if (wallet.sendTransaction) {
-                    // Fallback to wallet.sendTransaction if available
-                    const result = await wallet.sendTransaction(tx)
+                    console.log("✅ SDK transaction result:", result)
                     return result?.hash || result
                   }
-                  throw new Error("No transaction method available")
+                  
+                  // Method 2: Direct wallet transaction
+                  else if (wallet.sendTransaction) {
+                    console.log("📤 Using direct wallet transaction")
+                    const result = await wallet.sendTransaction(tx)
+                    console.log("✅ Direct wallet result:", result)
+                    return result?.hash || result
+                  }
+                  
+                  // Method 3: Alternative SDK methods
+                  else if ((window as any).farcaster?.sdk?.actions?.sendTransaction) {
+                    console.log("📤 Using alternative SDK transaction")
+                    const result = await (window as any).farcaster.sdk.actions.sendTransaction(tx)
+                    console.log("✅ Alternative SDK result:", result)
+                    return result?.hash || result
+                  }
+                  
+                  throw new Error("No transaction method available in FarCaster SDK")
                 } catch (err) {
-                  console.error("Transaction failed:", err)
-                  throw err
+                  console.error("❌ Transaction failed:", err)
+                  throw new Error(`Transaction failed: ${err instanceof Error ? err.message : "Unknown error"}`)
                 }
               }
             }
             setWallet(frameWallet)
-            console.log("Wallet detected and initialized:", frameWallet)
+            console.log("✅ Wallet detected and initialized:", frameWallet)
           } else if (detectionAttempts.current < maxAttempts) {
             // Wallet not detected yet, but we're in Frame environment
-            // Schedule another detection attempt with exponential backoff
-            const delay = Math.min(1000 * Math.pow(1.5, detectionAttempts.current), 5000)
-            console.log(`Wallet not detected yet, retrying in ${delay}ms...`)
+            // Schedule another detection attempt with shorter intervals
+            const delay = Math.min(500 * detectionAttempts.current, 2000)
+            console.log(`🔄 Wallet not detected yet, retrying in ${delay}ms...`)
             setTimeout(detectFrame, delay)
             return
           } else {
-            // Max attempts reached, but we still don't have wallet
-            // Create a minimal wallet interface for SDK-only operations
+            // Max attempts reached, create a minimal wallet interface
+            console.log("⚠️ Max attempts reached, creating minimal wallet interface")
             const sdkWallet: FrameWallet = {
               address: "",
               chainId: "8453",
               isConnected: false,
               connect: async () => {
-                console.log("SDK-only wallet connect attempted")
+                console.log("🔗 Attempting SDK wallet connection")
                 // Try to request wallet connection through SDK
                 if ((window as any).farcaster?.sdk?.actions?.requestWallet) {
                   await (window as any).farcaster.sdk.actions.requestWallet()
+                  console.log("✅ Wallet connection requested")
+                } else {
+                  console.log("❌ No wallet connection method available")
+                  throw new Error("No wallet connection method available")
                 }
               },
               sendTransaction: async (tx) => {
+                console.log("💳 Attempting SDK transaction")
                 // Use FarCaster SDK actions for transaction
                 if ((window as any).farcaster?.sdk?.actions?.transaction) {
                   const result = await (window as any).farcaster.sdk.actions.transaction(tx)
@@ -204,23 +252,24 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
               }
             }
             setWallet(sdkWallet)
-            console.log("SDK-only wallet created (no direct wallet access)")
+            console.log("🔧 SDK-only wallet created (no direct wallet access)")
           }
         } else {
           // Not in Frame context, might be standalone web app
           setIsFrame(false)
-          console.log("Not in Frame context, running as standalone web app")
+          console.log("🌐 Not in Frame context, running as standalone web app")
         }
       }
     } catch (err) {
-      console.error("Frame detection error:", err)
-      setError("Failed to detect Frame context")
+      console.error("❌ Frame detection error:", err)
+      setError(`Failed to detect Frame context: ${err instanceof Error ? err.message : "Unknown error"}`)
     } finally {
       setIsLoading(false)
     }
   }
 
   const retryDetection = () => {
+    console.log("🔄 Retrying frame detection...")
     setIsLoading(true)
     setError(null)
     detectionAttempts.current = 0

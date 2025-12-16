@@ -113,28 +113,12 @@ export async function GET(req: Request) {
   }
 
   try {
-    // If no API key, return mock data for testing
+    // Validate required API key
     if (!process.env.NEYNAR_API_KEY) {
-      console.log("No NEYNAR_API_KEY found, returning mock data")
-      const mockData = {
-        fid: Number.parseInt(fid),
-        username: `user${fid}`,
-        displayName: `User ${fid}`,
-        pfpUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${fid}`,
-        bio: "Farcaster user exploring the ecosystem",
-        score: Math.floor(Math.random() * 1000),
-        badge: ["OG", "Active", "Onchain", "Builder", "Newcomer"][Math.floor(Math.random() * 5)],
-        custody: "0x0000000000000000000000000000000000000000",
-        followers: Math.floor(Math.random() * 1000),
-        following: Math.floor(Math.random() * 500),
-        casts: Math.floor(Math.random() * 500),
-        ageDays: Math.floor(Math.random() * 365),
-        txCount: Math.floor(Math.random() * 100),
-        powerBadge: Math.random() > 0.7,
-        verifiedAddresses: ["0x1234567890123456789012345678901234567890"],
-        engagementRate: Math.random() * 20,
-      }
-      return NextResponse.json(mockData, { headers })
+      console.error("NEYNAR_API_KEY not configured")
+      return NextResponse.json({ 
+        error: "API configuration error: NEYNAR_API_KEY not found" 
+      }, { status: 500, headers })
     }
 
     const res = await fetch(`${NEYNAR_URL}?fids=${fid}`, {

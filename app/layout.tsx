@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
+import { EnhancedAuthKitProvider } from "@/providers/auth-kit-provider"
 import { FrameProvider } from "@/providers/frame-provider"
 import { FrameInitializer } from "@/components/frame-initializer"
 import { DebugFrame } from "@/components/debug-frame"
@@ -85,14 +86,16 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans antialiased`}>
         <ErrorBoundary>
-          <FrameProvider>
-            <ServiceWorkerRegistration />
-            <FrameInitializer />
-            {children}
-            <NotificationSystem />
-            <DebugFrame />
-            <Analytics />
-          </FrameProvider>
+          <EnhancedAuthKitProvider>
+            <FrameProvider>
+              <ServiceWorkerRegistration />
+              <FrameInitializer />
+              {children}
+              <NotificationSystem />
+              <DebugFrame />
+              <Analytics />
+            </FrameProvider>
+          </EnhancedAuthKitProvider>
         </ErrorBoundary>
       </body>
     </html>
