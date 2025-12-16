@@ -108,12 +108,14 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
           hasFarcaster: !!farcaster,
           hasFrameContext: !!farcaster?.frameContext,
           hasWallet: !!farcaster?.wallet,
-          hasSDK: !!farcaster?.sdk
+          hasSDK: !!farcaster?.sdk,
+          walletInSDK: !!farcaster?.sdk?.wallet,
+          walletInContext: !!farcaster?.frameContext?.wallet
         })
 
-        // Check for Frame context or wallet
+        // Check for Frame context or wallet - try multiple paths
         const frameContext = farcaster?.frameContext
-        const wallet = farcaster?.wallet
+        const wallet = farcaster?.wallet || farcaster?.sdk?.wallet || farcaster?.frameContext?.wallet
         
         if (frameContext || wallet || farcaster?.sdk) {
           setIsFrame(true)
@@ -129,22 +131,39 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
               address: wallet.address || "",
               chainId: wallet.chainId || "8453", // Base network
               isConnected: !!wallet.address,
+              // FarCaster wallets are auto-connected, no manual connect needed
               connect: async () => {
-                if (wallet.connect) {
-                  await wallet.connect()
-                  // Refresh wallet state after connection
+                // Refresh wallet state to get latest connection status
+                if (wallet?.address) {
                   setWallet(prev => prev ? {
                     ...prev,
                     address: wallet.address || prev.address,
                     isConnected: !!wallet.address
-                  } : null)
+                  } : {
+                    address: wallet.address,
+                    chainId: wallet.chainId || "8453",
+                    isConnected: true,
+                    connect: async () => {},
+                    sendTransaction: async () => { throw new Error("Transaction not supported") }
+                  })
                 }
               },
               sendTransaction: async (tx) => {
-                if (wallet.sendTransaction) {
-                  return await wallet.sendTransaction(tx)
+                try {
+                  // Use FarCaster SDK actions for transaction
+                  if ((window as any).farcaster?.sdk?.actions?.transaction) {
+                    const result = await (window as any).farcaster.sdk.actions.transaction(tx)
+                    return result?.hash || result
+                  } else if (wallet.sendTransaction) {
+                    // Fallback to wallet.sendTransaction if available
+                    const result = await wallet.sendTransaction(tx)
+                    return result?.hash || result
+                  }
+                  throw new Error("No transaction method available")
+                } catch (err) {
+                  console.error("Transaction failed:", err)
+                  throw err
                 }
-                throw new Error("Wallet transaction not supported")
               }
             }
             setWallet(frameWallet)

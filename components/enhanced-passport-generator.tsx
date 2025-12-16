@@ -102,14 +102,36 @@ export function EnhancedPassportGenerator() {
 
       if (wallet?.isConnected && wallet.sendTransaction) {
         // Frame wallet minting
-        const txHash = await wallet.sendTransaction({
-          to: txData.params.to,
-          data: txData.params.data,
-          value: txData.params.value,
-        })
+        try {
+          const txHash = await wallet.sendTransaction({
+            to: txData.params.to,
+            data: txData.params.data,
+            value: txData.params.value,
+          })
 
-        success("Transaction Sent", `NFT minting initiated: ${txHash.slice(0, 10)}...`)
-        trackNFTMinted(passport.fid, txData.tokenId, txHash)
+          success("Transaction Sent", `NFT minting initiated: ${txHash.slice(0, 10)}...`)
+          trackNFTMinted(passport.fid, txData.tokenId, txHash)
+        } catch (txErr) {
+          // Try using FarCaster SDK actions as fallback
+          if ((window as any).farcaster?.sdk?.actions?.transaction) {
+            try {
+              const result = await (window as any).farcaster.sdk.actions.transaction({
+                to: txData.params.to,
+                data: txData.params.data,
+                value: txData.params.value,
+              })
+              const txHash = result?.hash || result
+              success("Transaction Sent", `NFT minting initiated: ${txHash.slice(0, 10)}...`)
+              trackNFTMinted(passport.fid, txData.tokenId, txHash)
+            } catch (sdkErr) {
+              const errorMsg = txErr instanceof Error ? txErr.message : "Unknown error"
+              throw new Error(`Transaction failed: ${errorMsg}`)
+            }
+          } else {
+            const errorMsg = txErr instanceof Error ? txErr.message : "Unknown error"
+            throw new Error(`Transaction failed: ${errorMsg}`)
+          }
+        }
       } else {
         showError("Wallet Required", "Please connect your wallet to mint")
       }

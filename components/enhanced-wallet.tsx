@@ -46,7 +46,11 @@ export function EnhancedWallet({
     const checkWalletAvailability = () => {
       if (typeof window !== 'undefined') {
         const farcaster = (window as any).farcaster
-        const hasWallet = !!farcaster?.wallet || !!farcaster?.sdk?.wallet
+        // Check for various wallet availability patterns in FarCaster SDK
+        const hasWallet = !!farcaster?.wallet || 
+                         !!farcaster?.sdk?.wallet ||
+                         !!farcaster?.sdk?.context?.wallet ||
+                         !!farcaster?.frameContext?.wallet
         setWalletAvailable(hasWallet)
       }
     }
@@ -95,8 +99,18 @@ export function EnhancedWallet({
 
     setIsConnecting(true)
     try {
-      await wallet.connect()
-      success("Wallet connected", `Connected to ${wallet.address?.slice(0, 6)}...${wallet.address?.slice(-4)}`)
+      // FarCaster wallets are auto-connected, just refresh the state
+      if (wallet.address) {
+        success("Wallet ready", `Connected to ${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`)
+      } else {
+        // Try to trigger wallet connection in FarCaster
+        if ((window as any).farcaster?.sdk?.actions?.requestWallet) {
+          await (window as any).farcaster.sdk.actions.requestWallet()
+          success("Wallet connection requested", "Please check your FarCast wallet")
+        } else {
+          success("Wallet ready", "Your FarCaster wallet should be connected")
+        }
+      }
     } catch (err) {
       error("Connection failed", "Failed to connect wallet. Please try again.")
     } finally {
@@ -386,8 +400,18 @@ export function useWallet() {
 
     setIsLoading(true)
     try {
-      await wallet.connect()
-      success("Wallet connected", `Connected to ${wallet.address?.slice(0, 6)}...`)
+      // FarCaster wallets are auto-connected, no manual connect needed
+      if (wallet.address) {
+        success("Wallet ready", `Connected to ${wallet.address.slice(0, 6)}...`)
+      } else {
+        // Try to request wallet connection
+        if ((window as any).farcaster?.sdk?.actions?.requestWallet) {
+          await (window as any).farcaster.sdk.actions.requestWallet()
+          success("Wallet connection requested", "Please check your FarCast wallet")
+        } else {
+          success("Wallet ready", "Your FarCaster wallet should be connected")
+        }
+      }
     } catch (err) {
       error("Connection failed", "Failed to connect wallet")
       throw err

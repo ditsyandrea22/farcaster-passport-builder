@@ -31,7 +31,7 @@ export function EnhancedShare({
   const { isFrame, share, openUrl } = useFrame()
 
   const shareToWarpcast = () => {
-    const shareText = url ? `${text} ${url}` : text
+    const shareText = url ? `${text}${url}` : text
     const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`
     openUrl(warpcastUrl)
   }
@@ -154,7 +154,7 @@ export function ShareButton({ text, url, className, variant = "outline", size = 
   const handleShare = async () => {
     setIsSharing(true)
     try {
-      const shareText = url ? `${text} ${url}` : text
+      const shareText = url ? `${text}${url}` : text
       
       if (isFrame && share) {
         await share({ text: shareText, url })
