@@ -14,26 +14,49 @@ interface EnhancedWalletProps {
   showBalance?: boolean
   showNetwork?: boolean
   compact?: boolean
+  enableRetry?: boolean
 }
 
 export function EnhancedWallet({ 
   className, 
   showBalance = true, 
   showNetwork = true,
-  compact = false 
+  compact = false,
+  enableRetry = true
 }: EnhancedWalletProps) {
   const [isConnecting, setIsConnecting] = useState(false)
   const [balance, setBalance] = useState<string | null>(null)
   const [networkInfo, setNetworkInfo] = useState<any>(null)
+  const [walletAvailable, setWalletAvailable] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
   
   const { 
     isFrame, 
     wallet, 
     walletAddress, 
     isWalletConnected, 
-    actions 
+    actions,
+    retryDetection,
+    isLoading
   } = useFrame()
   const { success, error } = useNotifications()
+
+  // Check wallet availability
+  useEffect(() => {
+    const checkWalletAvailability = () => {
+      if (typeof window !== 'undefined') {
+        const farcaster = (window as any).farcaster
+        const hasWallet = !!farcaster?.wallet || !!farcaster?.sdk?.wallet
+        setWalletAvailable(hasWallet)
+      }
+    }
+
+    checkWalletAvailability()
+    
+    // Check periodically for wallet availability
+    const interval = setInterval(checkWalletAvailability, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Load balance when wallet is connected
   useEffect(() => {
@@ -52,9 +75,21 @@ export function EnhancedWallet({
     loadBalance()
   }, [walletAddress, showBalance])
 
+  const handleRetryDetection = () => {
+    if (enableRetry) {
+      setRetryCount(prev => prev + 1)
+      retryDetection()
+    }
+  }
+
   const handleConnect = async () => {
+    if (!wallet && !walletAvailable) {
+      error("Wallet not available", "Please wait for the wallet to load or try refreshing")
+      return
+    }
+
     if (!wallet) {
-      error("Wallet not available", "Please use Farcaster Frame or install a wallet extension")
+      error("Wallet not ready", "Wallet is still loading, please try again in a moment")
       return
     }
 
@@ -63,7 +98,7 @@ export function EnhancedWallet({
       await wallet.connect()
       success("Wallet connected", `Connected to ${wallet.address?.slice(0, 6)}...${wallet.address?.slice(-4)}`)
     } catch (err) {
-      error("Connection failed", "Failed to connect wallet")
+      error("Connection failed", "Failed to connect wallet. Please try again.")
     } finally {
       setIsConnecting(false)
     }
@@ -94,15 +129,88 @@ export function EnhancedWallet({
     return balance
   }
 
-  if (!isFrame && !wallet) {
+  // Show loading state while detecting Frame
+  if (isLoading) {
+    return (
+      <Card className={cn("p-4 bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800", className)}>
+        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+          <LoadingSpinner size="sm" />
+          <div>
+            <p className="text-sm font-semibold">Detecting Frame environment...</p>
+            <p className="text-xs">Please wait</p>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  // Show Frame detection issue
+  if (!isFrame) {
     return (
       <Card className={cn("p-4 bg-yellow-50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-800", className)}>
         <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
           <span>⚠️</span>
-          <div>
-            <p className="text-sm font-semibold">Wallet not available</p>
-            <p className="text-xs">Please use Farcaster Frame or install a wallet extension</p>
+          <div className="flex-1">
+            <p className="text-sm font-semibold">Not in Frame context</p>
+            <p className="text-xs">Please open this app in Farcaster Frame</p>
           </div>
+          {enableRetry && (
+            <Button
+              onClick={handleRetryDetection}
+              variant="outline"
+              size="sm"
+            >
+              🔄 Retry
+            </Button>
+          )}
+        </div>
+      </Card>
+    )
+  }
+
+  // Show wallet loading state
+  if (isFrame && !walletAvailable && !wallet) {
+    return (
+      <Card className={cn("p-4 bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800", className)}>
+        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+          <LoadingSpinner size="sm" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold">Loading wallet...</p>
+            <p className="text-xs">Attempt {retryCount + 1}</p>
+          </div>
+          {enableRetry && (
+            <Button
+              onClick={handleRetryDetection}
+              variant="outline"
+              size="sm"
+            >
+              🔄 Retry
+            </Button>
+          )}
+        </div>
+      </Card>
+    )
+  }
+
+  // Show no wallet available in Frame
+  if (isFrame && !wallet && !walletAvailable) {
+    return (
+      <Card className={cn("p-4 bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800", className)}>
+        <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+          <span>❌</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold">Wallet not available</p>
+            <p className="text-xs">Please ensure you're using the latest Farcaster app</p>
+          </div>
+          {enableRetry && (
+            <Button
+              onClick={handleRetryDetection}
+              variant="outline"
+              size="sm"
+            >
+              🔄 Retry
+            </Button>
+          )}
         </div>
       </Card>
     )
@@ -154,6 +262,11 @@ export function EnhancedWallet({
                 Connected
               </Badge>
             )}
+            {walletAvailable && !isWalletConnected && (
+              <Badge variant="outline" className="text-xs">
+                Available
+              </Badge>
+            )}
           </h3>
           
           {showNetwork && networkInfo && (
@@ -195,7 +308,8 @@ export function EnhancedWallet({
             
             <div className="text-xs text-muted-foreground">
               Network: {wallet?.chainId || "Base"} • 
-              Frame: {isFrame ? "Yes" : "No"}
+              Frame: {isFrame ? "Yes" : "No"} • 
+              Retry Count: {retryCount}
             </div>
           </div>
         ) : (
@@ -205,7 +319,7 @@ export function EnhancedWallet({
             </p>
             <Button
               onClick={handleConnect}
-              disabled={isConnecting}
+              disabled={isConnecting || !walletAvailable}
               className="w-full"
             >
               {isConnecting ? (
@@ -219,6 +333,17 @@ export function EnhancedWallet({
                 </>
               )}
             </Button>
+            
+            {enableRetry && (
+              <Button
+                onClick={handleRetryDetection}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                🔄 Retry Detection ({retryCount})
+              </Button>
+            )}
           </div>
         )}
       </div>

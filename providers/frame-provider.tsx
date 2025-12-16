@@ -55,6 +55,7 @@ interface FrameContextType {
   
   // Utilities
   refreshContext: () => Promise<void>
+  retryDetection: () => void
 }
 
 const FrameContext = createContext<FrameContextType | null>(null)
@@ -83,7 +84,8 @@ export function FrameProvider({ children }: FrameProviderProps) {
     frameContext,
     wallet,
     isLoading,
-    error
+    error,
+    retryDetection
   } = useFarcasterFrame()
 
   const user = frameContext?.user || null
@@ -215,7 +217,8 @@ export function FrameProvider({ children }: FrameProviderProps) {
     showNotification,
     
     // Utilities
-    refreshContext
+    refreshContext,
+    retryDetection
   }
 
   return (
