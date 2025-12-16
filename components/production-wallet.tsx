@@ -176,6 +176,77 @@ export function ProductionWallet({
     )
   }
 
+  // If we have a wallet, show it regardless of frame status (wallet proves we're in frame)
+  if (wallet?.isConnected || walletState?.isConnected) {
+    return (
+      <Card className={cn("p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-purple-200/50 dark:border-purple-800/50", className)}>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold flex items-center gap-2">
+              🔗 Production Wallet
+              <Badge variant="secondary" className="text-xs">
+                Connected
+              </Badge>
+              {connectionMethod && getConnectionMethodBadge()}
+            </h3>
+            
+            {showNetwork && walletState?.networkName && (
+              <Badge variant="outline" className="text-xs">
+                {walletState.networkName}
+              </Badge>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-mono">{walletAddress && formatAddress(walletAddress)}</p>
+                {showBalance && walletState?.balance && (
+                  <p className="text-xs text-muted-foreground">
+                    Balance: {formatBalance(walletState.balance)}
+                  </p>
+                )}
+                {showConnectionDetails && walletState && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>Chain ID: {walletState.chainId}</p>
+                    <p>Last Updated: {new Date(walletState.lastUpdated).toLocaleTimeString()}</p>
+                    {lastActivity && (
+                      <p>Last Activity: {new Date(lastActivity).toLocaleTimeString()}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  onClick={copyAddress}
+                  variant="outline"
+                  size="sm"
+                >
+                  📋 Copy
+                </Button>
+                <Button
+                  onClick={handleDisconnect}
+                  variant="outline"
+                  size="sm"
+                >
+                  🔄 Refresh
+                </Button>
+              </div>
+            </div>
+            
+            <div className="text-xs text-muted-foreground">
+              Network: {walletState?.networkName || "Base"} • 
+              Frame: {isFrame ? "Yes" : "No"} • 
+              Retry Count: {retryCount} • 
+              Method: {connectionMethod || "Unknown"}
+            </div>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
   // Show loading state while detecting Frame
   if (isLoading) {
     return (
@@ -189,11 +260,6 @@ export function ProductionWallet({
         </div>
       </Card>
     )
-  }
-
-  // If we have a wallet, show it regardless of frame status (wallet proves we're in frame)
-  if (wallet?.isConnected || walletState?.isConnected) {
-    return renderWalletInfo()
   }
 
   // Show Frame detection issue only if we truly can't find any wallet/SDK
@@ -435,8 +501,4 @@ export function useProductionWallet() {
     connect: connectProduction,
     onWalletEvent
   }
-}
-
-function renderWalletInfo() {
-  throw new Error("Function not implemented.")
 }

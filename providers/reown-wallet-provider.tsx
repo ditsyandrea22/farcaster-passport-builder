@@ -3,6 +3,19 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { BrowserProvider, ethers } from "ethers"
 
+/**
+ * Reown Project ID from environment - REQUIRED for wallet connections
+ * Get from: https://cloud.reown.com
+ */
+const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID
+const BASE_CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_BASE_CHAIN_ID || "8453")
+const ETHEREUM_CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_ETHEREUM_CHAIN_ID || "1")
+
+// Validate environment variables
+if (!REOWN_PROJECT_ID) {
+  console.warn("⚠️ NEXT_PUBLIC_REOWN_PROJECT_ID not set in .env - wallet connections may not work")
+}
+
 interface WalletInfo {
   address: string
   chainId: number

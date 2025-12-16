@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react'
+
 export function useFrameContext() {
   const [frameContext, setFrameContext] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -6,8 +8,8 @@ export function useFrameContext() {
     async function detectFrame() {
       try {
         // Check for Farcaster SDK
-        if (window.farcasterSDK) {
-          const context = window.farcasterSDK.context;
+        if ((window as any).farcasterSDK) {
+          const context = (window as any).farcasterSDK.context;
           if (context) {
             setFrameContext(context);
             setIsLoading(false);

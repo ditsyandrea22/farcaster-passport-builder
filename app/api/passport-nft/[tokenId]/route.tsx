@@ -2,7 +2,8 @@ import { ImageResponse } from "next/og"
 
 export const runtime = "edge"
 
-export async function GET(_: Request, { params }: { params: { tokenId: string } }) {
+export async function GET(_: Request, { params }: { params: Promise<{ tokenId: string }> }) {
+  const { tokenId } = await params
   // In production, fetch passport data from blockchain
   return new ImageResponse(
     <div
@@ -20,7 +21,7 @@ export async function GET(_: Request, { params }: { params: { tokenId: string } 
     >
       <div style={{ fontSize: 80, fontWeight: "bold", marginBottom: 30 }}>🪪</div>
       <div style={{ fontSize: 48, fontWeight: "bold" }}>Reputation Passport</div>
-      <div style={{ fontSize: 32, opacity: 0.8, marginTop: 20 }}>#{params.tokenId}</div>
+      <div style={{ fontSize: 32, opacity: 0.8, marginTop: 20 }}>#{tokenId}</div>
     </div>,
     {
       width: 1200,

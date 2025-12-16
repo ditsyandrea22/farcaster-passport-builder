@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
-export async function GET(_: Request, { params }: { params: { tokenId: string } }) {
-  const tokenId = params.tokenId
+export async function GET(_: Request, { params }: { params: Promise<{ tokenId: string }> }) {
+  const { tokenId } = await params
 
   // In production, fetch this data from the blockchain
   // For now, we'll return a template
