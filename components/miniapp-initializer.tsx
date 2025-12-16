@@ -6,14 +6,8 @@ import { useEffect, useRef } from "react"
  * MiniAppInitializer Component
  * 
  * Initializes the Farcaster Mini App SDK and calls sdk.actions.ready()
- * This component must be mounted in the layout to properly signal to Farcaster
- * that the app has loaded and is ready to display.
- * 
- * Key Features:
- * - Detects if running in Mini App environment
- * - Calls sdk.actions.ready() when app is fully loaded
- * - Handles SDK initialization with proper error handling
- * - Prevents infinite loading screen (common issue)
+ * The main SDK initialization happens in /public/sdk-ready.js
+ * This component provides a React-level fallback and confirmation
  */
 
 export function MiniAppInitializer() {
@@ -28,64 +22,52 @@ export function MiniAppInitializer() {
         // Check if we're in a Mini App environment
         if (typeof window === "undefined") return
 
-        console.log("🔍 MiniAppInitializer starting...")
+        console.log("🔍 MiniAppInitializer: Checking for SDK...")
 
-        // Try to call ready immediately first (SDK might be already injected)
+        // Check if already initialized by global script
+        if ((window as any).__miniapp_ready__) {
+          console.log("✅ Mini App already initialized by global script")
+          return
+        }
+
+        // Try to call ready() as a React-level fallback
         const tryCallReady = async () => {
           const sdk = (window as any).farcaster?.sdk || 
-                     (window as any).__FARCASTER_SDK__ ||
-                     (window as any).__MINIAPP_SDK__ ||
-                     ((window as any).parent?.farcaster?.sdk)
+                     (window as any).__FARCASTER_SDK__
 
           if (sdk?.actions?.ready) {
             try {
-              console.log("📞 Calling sdk.actions.ready()...")
+              console.log("📞 React-level: Calling sdk.actions.ready()...")
               const result = await sdk.actions.ready()
-              console.log("✅ Mini App initialized: sdk.actions.ready() called successfully")
+              console.log("✅ React-level: sdk.actions.ready() succeeded")
               ;(window as any).__miniapp_ready__ = true
               return true
             } catch (error) {
-              console.warn("⚠️ sdk.actions.ready() rejected:", error)
+              console.warn("⚠️ React-level: sdk.actions.ready() error:", error)
               return false
             }
           }
           return false
         }
 
-        // Try immediately
-        console.log("⏱️ Trying immediate SDK detection...")
-        if (await tryCallReady()) {
-          console.log("✅ SDK ready called immediately")
-          return
-        }
-
-        // Wait for SDK to be injected - it's injected by Farcaster clients
+        // Wait up to 5 seconds for SDK if not found immediately
         let attempts = 0
-        const maxAttempts = 150 // 15 seconds total
+        const maxAttempts = 50
         
         while (attempts < maxAttempts) {
-          attempts++
-          await new Promise(resolve => setTimeout(resolve, 100))
-          
-          if (attempts % 10 === 0) {
-            console.log(`🔄 Still waiting for SDK (${attempts * 100}ms)...`)
-          }
-          
           if (await tryCallReady()) {
-            console.log(`✅ SDK ready called after ${attempts * 100}ms`)
             return
           }
+          attempts++
+          await new Promise(resolve => setTimeout(resolve, 100))
         }
 
-        console.info("ℹ️ Not running in Farcaster Mini App environment (SDK not found after 15s)")
-        // Don't block - the app should still work in regular browser
+        console.info("ℹ️ MiniAppInitializer: SDK not found (app will run in web mode)")
       } catch (error) {
-        console.warn("⚠️ Mini App initialization error:", error)
-        // Don't throw - graceful degradation for non-Mini App environments
+        console.warn("⚠️ MiniAppInitializer error:", error)
       }
     }
 
-    // Initialize as soon as possible
     initializeMiniApp()
   }, [])
 

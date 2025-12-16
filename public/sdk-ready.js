@@ -1,133 +1,79 @@
-// Enhanced SDK initialization with conflict protection
+// SDK initialization for Farcaster Mini Apps
 (function() {
   'use strict';
   
-  // Initialize conflict protection immediately
-  function initializeProtection() {
+  // Simple SVG size fix for rendering issues
+  function fixSVGSizes() {
     try {
-      // Set up SVG sanitizer
-      if (typeof window !== 'undefined' && typeof MutationObserver !== 'undefined') {
-        const svgObserver = new MutationObserver(function(mutations) {
-          mutations.forEach(function(mutation) {
-            mutation.addedNodes.forEach(function(node) {
-              if (node.nodeType === 1) { // Element node
-                fixSVGErrors(node);
-              }
-            });
-          });
-        });
-        
-        function fixSVGErrors(element) {
-          if (element.tagName && element.tagName.toLowerCase() === 'svg') {
-            const width = element.getAttribute('width');
-            const height = element.getAttribute('height');
-            
-            if (width === 'small' || width === 'large' || width === 'medium' || isNaN(parseInt(width))) {
-              const numericWidth = getNumericSize(width) || 24;
-              element.setAttribute('width', numericWidth.toString());
-              console.log('🧹 Fixed SVG width:', width, '→', numericWidth);
-            }
-            
-            if (height === 'small' || height === 'large' || height === 'medium' || isNaN(parseInt(height))) {
-              const numericHeight = getNumericSize(height) || 24;
-              element.setAttribute('height', numericHeight.toString());
-              console.log('🧹 Fixed SVG height:', height, '→', numericHeight);
-            }
-          }
-          
-          // Fix child elements recursively
-          if (element.children) {
-            for (var i = 0; i < element.children.length; i++) {
-              fixSVGErrors(element.children[i]);
-            }
-          }
-        }
-        
-        function getNumericSize(size) {
-          var sizeMap = {
-            'small': 16,
-            'medium': 24,
-            'large': 32
-          };
-          return sizeMap[size] || 24;
-        }
-        
-        svgObserver.observe(document.documentElement, {
-          childList: true,
-          subtree: true,
-          attributes: true
-        });
-        
-        console.log('🛡️ SVG Sanitizer initialized');
-      }
+      // Only fix text-based size attributes that are invalid
+      var svgs = document.querySelectorAll('[width="small"], [width="medium"], [width="large"], [height="small"], [height="medium"], [height="large"]');
       
-      // Set up wallet conflict protection
-      if (typeof window !== 'undefined') {
-        // Prevent external wallet injection
-        var originalDefineProperty = Object.defineProperty;
-        Object.defineProperty = function(obj, prop, descriptor) {
-          if (obj === window && (prop === 'ethereum' || prop === 'isZerion' || String(prop).indexOf('eth_') === 0)) {
-            // Only log occasionally to reduce noise
-            if (Math.random() < 0.1) { // 10% of the time
-              console.debug('🛡️ Blocked external wallet property injection:', prop);
-            }
-            return obj; // Silently block the redefinition
-          }
-          return originalDefineProperty.call(this, obj, prop, descriptor);
-        };
-        
-        console.log('🛡️ Wallet conflict protection initialized');
-      }
+      var sizeMap = { 'small': 16, 'medium': 24, 'large': 32 };
       
-    } catch (error) {
-      console.error('Protection initialization failed:', error);
+      svgs.forEach(function(el) {
+        var width = el.getAttribute('width');
+        var height = el.getAttribute('height');
+        
+        if (width && width in sizeMap) {
+          el.setAttribute('width', sizeMap[width].toString());
+        }
+        if (height && height in sizeMap) {
+          el.setAttribute('height', sizeMap[height].toString());
+        }
+      });
+      
+      console.debug('SVG sizes normalized');
+    } catch (e) {
+      // Silent fail
     }
   }
   
   function callSDKReady() {
     try {
-      if (window.farcaster && window.farcaster.sdk && window.farcaster.sdk.actions && window.farcaster.sdk.actions.ready) {
+      var sdk = window.farcaster && window.farcaster.sdk;
+      if (sdk && sdk.actions && sdk.actions.ready) {
         console.log("🚀 Calling sdk.actions.ready()");
-        var result = window.farcaster.sdk.actions.ready();
+        var result = sdk.actions.ready();
         
-        // Handle both sync and async ready calls
+        // Handle both sync and async ready
         if (result && typeof result.then === 'function') {
           result
             .then(function() {
-              console.log("✅ sdk.actions.ready() completed successfully");
+              console.log("✅ sdk.actions.ready() success");
               window.__miniapp_ready__ = true;
             })
             .catch(function(err) {
-              console.warn("⚠️ sdk.actions.ready() rejected:", err);
+              console.warn("⚠️ sdk.actions.ready() error:", err.message);
             });
         } else {
-          console.log("✅ sdk.actions.ready() called (sync)");
+          console.log("✅ sdk.actions.ready() called");
           window.__miniapp_ready__ = true;
         }
         return true;
       }
+      return false;
     } catch (err) {
-      console.warn("⚠️ Error calling sdk.actions.ready():", err);
+      console.warn("⚠️ Error calling sdk.actions.ready():", err.message);
+      return false;
     }
-    return false;
   }
   
-  // Initialize protection immediately
-  initializeProtection();
+  // Fix SVG sizes on load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fixSVGSizes);
+  } else {
+    fixSVGSizes();
+  }
   
-  // Try SDK ready immediately
+  // Try SDK ready at various times
   if (callSDKReady()) {
     return;
   }
   
-  // Try again when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      callSDKReady();
-    });
+    document.addEventListener('DOMContentLoaded', callSDKReady);
   }
   
-  // Also try after delays to catch late-loading SDKs
   setTimeout(callSDKReady, 100);
   setTimeout(callSDKReady, 500);
   setTimeout(callSDKReady, 1000);
