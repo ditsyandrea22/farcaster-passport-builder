@@ -4,7 +4,15 @@
  * Single source of truth for wallet detection and management
  * Consolidates multiple detection systems into one reliable implementation
  * Properly handles SSR (Server-Side Rendering) to prevent build errors
+ * Uses safe property access to prevent conflicts with wallet extensions
  */
+
+import { 
+  safeGetProperty, 
+  safeGetPropertyDescriptor, 
+  safeGetWindowEthereum,
+  safeGetWalletAddress 
+} from './safe-property-access'
 
 export interface WalletConnectionState {
   isConnected: boolean
@@ -116,24 +124,36 @@ export class UnifiedWalletManager {
     }
   }
 
-  // Get SDK from any available location
+  // Get SDK from any available location using safe property access
   private getSDK(): any {
     if (typeof window === 'undefined') return null
     
-    return (window as any).farcaster?.sdk || 
-           (window as any).__FARCASTER__?.sdk ||
-           (window as any).__MINIAPP__?.sdk ||
-           null
+    try {
+      const farcasterSDK = safeGetProperty(window, 'farcaster.sdk') ||
+                           safeGetProperty(window, '__FARCASTER__.sdk') ||
+                           safeGetProperty(window, '__MINIAPP__.sdk')
+      
+      return farcasterSDK || null
+    } catch (error) {
+      console.warn("⚠️ SDK access failed:", error)
+      return null
+    }
   }
 
-  // Get Farcaster object from any available location
+  // Get Farcaster object from any available location using safe property access
   private getFarcaster(): any {
     if (typeof window === 'undefined') return null
     
-    return (window as any).farcaster || 
-           (window as any).__FARCASTER__ ||
-           (window as any).__MINIAPP__ ||
-           null
+    try {
+      const farcaster = safeGetProperty(window, 'farcaster') ||
+                        safeGetProperty(window, '__FARCASTER__') ||
+                        safeGetProperty(window, '__MINIAPP__')
+      
+      return farcaster || null
+    } catch (error) {
+      console.warn("⚠️ Farcaster object access failed:", error)
+      return null
+    }
   }
 
   // Single, reliable wallet detection method
@@ -198,17 +218,27 @@ export class UnifiedWalletManager {
         })
       }
 
-      // Method 5: Window fallback (only if in iframe)
+      // Method 5: Window fallback (only if in iframe) - using safe access
       if (window.self !== window.top) {
-        const windowWallet = (window as any).ethereum?.selectedAddress
-        if (windowWallet) {
-          console.log("✅ Window wallet found:", windowWallet)
-          return this.updateWalletState({
-            isConnected: true,
-            address: windowWallet,
-            chainId: "8453",
-            connectionMethod: 'window'
-          })
+        try {
+          // Use safe window.ethereum access to prevent conflicts
+          const ethereum = safeGetWindowEthereum(window)
+          
+          if (ethereum && ethereum.selectedAddress) {
+            const windowWallet = ethereum.selectedAddress
+            if (windowWallet) {
+              console.log("✅ Window wallet found:", windowWallet)
+              return this.updateWalletState({
+                isConnected: true,
+                address: windowWallet,
+                chainId: "8453",
+                connectionMethod: 'window'
+              })
+            }
+          }
+        } catch (error) {
+          console.warn("⚠️ Window wallet access failed (this is often normal):", error)
+          // Continue without throwing - window.ethereum conflicts are common
         }
       }
 
