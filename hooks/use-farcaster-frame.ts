@@ -191,29 +191,21 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
       if (typeof window !== 'undefined') {
         const farcaster = (window as any).farcaster
         
-        console.log(`🔍 Frame detection attempt ${detectionAttempts.current}:`, {
+        console.log(`🔍 Simplified frame detection attempt ${detectionAttempts.current}:`, {
           hasFarcaster: !!farcaster,
-          hasFrameContext: !!farcaster?.frameContext,
-          hasWallet: !!farcaster?.wallet,
-          hasSDK: !!farcaster?.sdk,
-          walletInSDK: !!farcaster?.sdk?.wallet,
-          walletInContext: !!farcaster?.frameContext?.wallet,
-          isSDKReady
+          timestamp: Date.now()
         })
 
-        // Check for Frame context or wallet
-        const frameContext = farcaster?.frameContext
-        
-        // If we have any Farcaster object, consider it a Frame environment
-        if (farcaster && (frameContext || farcaster?.sdk)) {
+        // Quick detection - just check for Farcaster object
+        if (farcaster) {
           setIsFrame(true)
           
           // Get frame context if available
-          if (frameContext) {
-            setFrameContext(frameContext)
+          if (farcaster.frameContext) {
+            setFrameContext(farcaster.frameContext)
           }
           
-          // Use enhanced wallet manager for wallet detection
+          // Use simplified wallet detection
           const currentState = await enhancedWalletManager.detectWallet()
           setWalletState(currentState)
           
@@ -225,21 +217,26 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
               isConnected: currentState.isConnected,
               connect: async () => {},
               sendTransaction: async (tx) => {
-                const result = await enhancedWalletManager.sendTransaction(tx)
-                return result.hash
+                try {
+                  const result = await enhancedWalletManager.sendTransaction(tx)
+                  return result.hash
+                } catch (error) {
+                  console.error("Transaction failed:", error)
+                  throw error
+                }
               }
             })
           }
           
         } else {
-          // Not in Frame context, might be standalone web app
+          // Not in Frame context
           setIsFrame(false)
           console.log("🌐 Not in Frame context, running as standalone web app")
         }
       }
     } catch (err) {
       console.error("❌ Frame detection error:", err)
-      setError(`Failed to detect Frame context: ${err instanceof Error ? err.message : "Unknown error"}`)
+      setError(`Frame detection failed: ${err instanceof Error ? err.message : "Unknown error"}`)
     } finally {
       setIsLoading(false)
     }

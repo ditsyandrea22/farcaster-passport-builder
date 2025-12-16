@@ -7,6 +7,7 @@ import { FrameProvider } from "@/providers/frame-provider"
 import { FrameInitializer } from "@/components/frame-initializer"
 import { NotificationSystem } from "@/components/notification-system"
 import { ErrorBoundary } from "@/components/error-boundary"
+import { logConfigStatus } from "@/lib/env-config"
 
 export const metadata: Metadata = {
   title: "Farcaster Reputation Passport",
@@ -76,6 +77,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Log environment configuration on server start
+  if (typeof window === 'undefined') {
+    logConfigStatus()
+  }
+
   return (
     <html lang="en">
       <head>

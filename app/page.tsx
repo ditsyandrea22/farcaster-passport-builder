@@ -3,6 +3,7 @@
 import dynamicImport from 'next/dynamic'
 import { ThemeToggle } from "@/components/theme-toggle"
 import { WalletErrorHandler } from "@/components/wallet-error-handler"
+import { TimeoutWrapper } from "@/components/timeout-wrapper"
 
 // Dynamic import to avoid SSR issues with Frame hooks
 const MobileOptimizedPassportGenerator = dynamicImport(
@@ -11,7 +12,10 @@ const MobileOptimizedPassportGenerator = dynamicImport(
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+          <p className="text-sm text-muted-foreground">Loading passport generator...</p>
+        </div>
       </div>
     )
   }
@@ -49,7 +53,9 @@ export default function Home() {
             </p>
           </div>
 
-          <MobileOptimizedPassportGenerator />
+          <TimeoutWrapper timeoutMs={10000}>
+            <MobileOptimizedPassportGenerator />
+          </TimeoutWrapper>
 
           {/* Wallet Error Handler */}
           <WalletErrorHandler />

@@ -99,7 +99,7 @@ export class EnhancedWalletManager {
     return EnhancedWalletManager.instance
   }
 
-  // Enhanced wallet detection with multiple fallback strategies
+  // Simplified wallet detection with timeout
   async detectWallet(): Promise<WalletConnectionState> {
     if (typeof window === 'undefined' || this.isInitializing) {
       return this.currentState
@@ -111,72 +111,93 @@ export class EnhancedWalletManager {
     try {
       const farcaster = (window as any).farcaster
       
-      console.log(`🔍 Wallet detection attempt ${this.detectionAttempts}:`, {
+      console.log(`🔍 Simplified wallet detection attempt ${this.detectionAttempts}:`, {
         hasFarcaster: !!farcaster,
-        hasFrameContext: !!farcaster?.frameContext,
-        hasWallet: !!farcaster?.wallet,
-        hasSDK: !!farcaster?.sdk,
         timestamp: Date.now()
       })
 
-      // Try each wallet detection method by priority
-      for (const detectMethod of this.WALLET_PRIORITIES) {
-        const result = detectMethod(farcaster)
-        
-        if (result && result.wallet?.address) {
-          console.log(`✅ Wallet found via ${result.method} method:`, {
-            address: result.wallet.address,
-            reliability: result.reliability,
-            chainId: result.wallet.chainId
-          })
-
-          // Update connection state
-          this.currentState = {
-            isConnected: true,
-            address: result.wallet.address,
-            chainId: result.wallet.chainId || "8453",
-            balance: null, // Will be loaded separately
-            networkName: this.getNetworkName(result.wallet.chainId || "8453"),
-            lastUpdated: Date.now()
-          }
-
-          // Load balance in background
-          this.loadBalance(result.wallet.address)
-          
-          // Emit connection event
-          this.emit('walletConnected', this.currentState)
-          
-          return this.currentState
-        }
-      }
-
-      // If no wallet found but we're in Frame environment, create SDK wallet interface
-      if (farcaster?.sdk?.actions && this.detectionAttempts < this.maxAttempts) {
-        console.log("🔧 Creating SDK wallet interface...")
+      // Quick detection - only try direct methods first
+      if (farcaster?.wallet?.address) {
+        console.log("✅ Direct wallet found:", farcaster.wallet.address)
         
         this.currentState = {
-          isConnected: false,
-          address: null,
-          chainId: "8453",
+          isConnected: true,
+          address: farcaster.wallet.address,
+          chainId: farcaster.wallet.chainId || "8453",
           balance: null,
           networkName: "Base",
           lastUpdated: Date.now()
         }
         
-        // Schedule retry
-        setTimeout(() => this.detectWallet(), Math.min(100 * this.detectionAttempts, 2000))
+        this.emit('walletConnected', this.currentState)
+        return this.currentState
+      }
+      
+      // Quick SDK detection
+      if (farcaster?.sdk?.wallet?.address) {
+        console.log("✅ SDK wallet found:", farcaster.sdk.wallet.address)
+        
+        this.currentState = {
+          isConnected: true,
+          address: farcaster.sdk.wallet.address,
+          chainId: farcaster.sdk.wallet.chainId || "8453",
+          balance: null,
+          networkName: "Base",
+          lastUpdated: Date.now()
+        }
+        
+        this.emit('walletConnected', this.currentState)
+        return this.currentState
+      }
+      
+      // Frame context detection
+      if (farcaster?.frameContext?.wallet?.address) {
+        console.log("✅ Frame context wallet found:", farcaster.frameContext.wallet.address)
+        
+        this.currentState = {
+          isConnected: true,
+          address: farcaster.frameContext.wallet.address,
+          chainId: farcaster.frameContext.wallet.chainId || "8453",
+          balance: null,
+          networkName: "Base",
+          lastUpdated: Date.now()
+        }
+        
+        this.emit('walletConnected', this.currentState)
         return this.currentState
       }
 
-      // Max attempts reached
-      if (this.detectionAttempts >= this.maxAttempts) {
-        console.warn("⚠️ Max wallet detection attempts reached")
-        this.emit('walletDetectionFailed', { attempts: this.detectionAttempts })
+      // No wallet found - return disconnected state
+      console.log("⚠️ No wallet found, returning disconnected state")
+      this.currentState = {
+        isConnected: false,
+        address: null,
+        chainId: "8453",
+        balance: null,
+        networkName: "Base",
+        lastUpdated: Date.now()
+      }
+
+      // Only retry a few times with shorter delays
+      if (this.detectionAttempts < 5) {
+        setTimeout(() => this.detectWallet(), 500 * this.detectionAttempts)
+      } else {
+        console.warn("⚠️ Wallet detection completed - no wallet found")
       }
 
     } catch (error) {
       console.error("❌ Wallet detection error:", error)
       this.emit('walletError', { error: error instanceof Error ? error.message : "Unknown error" })
+      
+      // Return disconnected state on error
+      this.currentState = {
+        isConnected: false,
+        address: null,
+        chainId: "8453",
+        balance: null,
+        networkName: "Base",
+        lastUpdated: Date.now()
+      }
     } finally {
       this.isInitializing = false
     }
