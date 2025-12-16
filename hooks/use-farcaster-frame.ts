@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, SetStateAction } from "react"
+import { enhancedWalletManager, type WalletConnectionState, type TransactionRequest, type TransactionResult } from "@/lib/enhanced-wallet-manager"
 
 interface FrameContext {
   user?: {
@@ -38,6 +39,12 @@ interface UseFarcasterFrameReturn {
   isLoading: boolean
   error: string | null
   retryDetection: () => void
+  
+  // Enhanced features
+  walletState: WalletConnectionState | null
+  sendTransaction: (tx: TransactionRequest) => Promise<TransactionResult>
+  requestConnection: () => Promise<void>
+  onWalletEvent: (event: string, callback: Function) => () => void
 }
 
 // Hook to initialize Frame SDK and call sdk.actions.ready()
@@ -122,12 +129,57 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
   const [wallet, setWallet] = useState<FrameWallet | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [walletState, setWalletState] = useState<WalletConnectionState | null>(null)
   const detectionAttempts = useRef(0)
   const maxAttempts = 15
 
   // Initialize Frame SDK with immediate ready call
   useImmediateSDKReady()
   const isSDKReady = useFrameSDK()
+
+  // Subscribe to wallet events from enhanced manager
+  useEffect(() => {
+    const unsubscribeConnected = enhancedWalletManager.on('walletConnected', (state: WalletConnectionState) => {
+      console.log("🔗 Enhanced wallet connected:", state)
+      setWalletState(state)
+      // Convert to FrameWallet format for compatibility
+      if (state.isConnected && state.address) {
+        setWallet({
+          address: state.address,
+          chainId: state.chainId || "8453",
+          isConnected: state.isConnected,
+          connect: async () => {},
+          sendTransaction: async (tx) => {
+            const result = await enhancedWalletManager.sendTransaction(tx)
+            return result.hash
+          }
+        })
+      }
+    })
+
+    const unsubscribeDisconnected = enhancedWalletManager.on('walletDisconnected', () => {
+      console.log("🔌 Enhanced wallet disconnected")
+      setWalletState(null)
+      setWallet(null)
+    })
+
+    const unsubscribeError = enhancedWalletManager.on('walletError', (data: { error: SetStateAction<string | null> }) => {
+      console.error("❌ Enhanced wallet error:", data)
+      setError(data.error)
+    })
+
+    const unsubscribeBalance = enhancedWalletManager.on('balanceUpdated', (data: { balance: any }) => {
+      console.log("💰 Balance updated:", data)
+      setWalletState(prev => prev ? { ...prev, balance: data.balance, lastUpdated: Date.now() } : null)
+    })
+
+    return () => {
+      unsubscribeConnected()
+      unsubscribeDisconnected()
+      unsubscribeError()
+      unsubscribeBalance()
+    }
+  }, [])
 
   const detectFrame = async () => {
     try {
@@ -149,35 +201,11 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
           isSDKReady
         })
 
-        // Check for Frame context or wallet - simplified detection
+        // Check for Frame context or wallet
         const frameContext = farcaster?.frameContext
         
-        // Simplified wallet detection with clear priority
-        let wallet = null
-        
-        // Priority 1: Direct wallet object (most reliable)
-        if (farcaster?.wallet?.address) {
-          wallet = farcaster.wallet
-          console.log("💰 Wallet found via direct path")
-        }
-        // Priority 2: Frame context wallet
-        else if (farcaster?.frameContext?.wallet?.address) {
-          wallet = farcaster.frameContext.wallet
-          console.log("💰 Wallet found via frameContext path")
-        }
-        // Priority 3: SDK wallet
-        else if (farcaster?.sdk?.wallet?.address) {
-          wallet = farcaster.sdk.wallet
-          console.log("💰 Wallet found via SDK path")
-        }
-        // Priority 4: SDK context wallet
-        else if (farcaster?.sdk?.context?.wallet?.address) {
-          wallet = farcaster.sdk.context.wallet
-          console.log("💰 Wallet found via SDK context path")
-        }
-        
         // If we have any Farcaster object, consider it a Frame environment
-        if (farcaster && (frameContext || wallet || farcaster?.sdk)) {
+        if (farcaster && (frameContext || farcaster?.sdk)) {
           setIsFrame(true)
           
           // Get frame context if available
@@ -185,111 +213,24 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
             setFrameContext(frameContext)
           }
           
-          // Set up wallet if available
-          if (wallet && wallet.address) {
-            const frameWallet: FrameWallet = {
-              address: wallet.address || "",
-              chainId: wallet.chainId || "8453", // Base network
-              isConnected: !!wallet.address,
-              // FarCaster wallets are auto-connected, no manual connect needed
-              connect: async () => {
-                console.log("🔗 Wallet connect called - refreshing wallet state")
-                // Try to get fresh wallet state
-                const farcaster = (window as any).farcaster
-                const freshWallet = farcaster?.wallet || farcaster?.frameContext?.wallet || farcaster?.sdk?.wallet
-                
-                if (freshWallet?.address) {
-                  setWallet(prev => prev ? {
-                    ...prev,
-                    address: freshWallet.address || prev.address,
-                    isConnected: !!freshWallet.address
-                  } : {
-                    address: freshWallet.address,
-                    chainId: freshWallet.chainId || "8453",
-                    isConnected: true,
-                    connect: async () => {},
-                    sendTransaction: async () => { throw new Error("Transaction not supported") }
-                  })
-                  console.log("✅ Wallet state refreshed")
-                } else {
-                  console.log("❌ No wallet address found on refresh")
-                }
-              },
+          // Use enhanced wallet manager for wallet detection
+          const currentState = await enhancedWalletManager.detectWallet()
+          setWalletState(currentState)
+          
+          if (currentState.isConnected && currentState.address) {
+            // Convert to FrameWallet format for compatibility
+            setWallet({
+              address: currentState.address,
+              chainId: currentState.chainId || "8453",
+              isConnected: currentState.isConnected,
+              connect: async () => {},
               sendTransaction: async (tx) => {
-                try {
-                  console.log("💳 Attempting transaction:", tx)
-                  
-                  // Method 1: Direct SDK transaction (most reliable)
-                  if ((window as any).farcaster?.sdk?.actions?.transaction) {
-                    console.log("📤 Using SDK transaction method")
-                    const result = await (window as any).farcaster.sdk.actions.transaction(tx)
-                    console.log("✅ SDK transaction result:", result)
-                    return result?.hash || result
-                  }
-                  
-                  // Method 2: Direct wallet transaction
-                  else if (wallet.sendTransaction) {
-                    console.log("📤 Using direct wallet transaction")
-                    const result = await wallet.sendTransaction(tx)
-                    console.log("✅ Direct wallet result:", result)
-                    return result?.hash || result
-                  }
-                  
-                  // Method 3: Alternative SDK methods
-                  else if ((window as any).farcaster?.sdk?.actions?.sendTransaction) {
-                    console.log("📤 Using alternative SDK transaction")
-                    const result = await (window as any).farcaster.sdk.actions.sendTransaction(tx)
-                    console.log("✅ Alternative SDK result:", result)
-                    return result?.hash || result
-                  }
-                  
-                  throw new Error("No transaction method available in FarCaster SDK")
-                } catch (err) {
-                  console.error("❌ Transaction failed:", err)
-                  throw new Error(`Transaction failed: ${err instanceof Error ? err.message : "Unknown error"}`)
-                }
+                const result = await enhancedWalletManager.sendTransaction(tx)
+                return result.hash
               }
-            }
-            setWallet(frameWallet)
-            console.log("✅ Wallet detected and initialized:", frameWallet)
-          } else if (detectionAttempts.current < maxAttempts) {
-            // Wallet not detected yet, but we're in Frame environment
-            // Schedule another detection attempt with shorter intervals
-            const delay = Math.min(200 * detectionAttempts.current, 1500)
-            console.log(`🔄 Wallet not detected yet, retrying in ${delay}ms...`)
-            setTimeout(detectFrame, delay)
-            return
-          } else {
-            // Max attempts reached, create a minimal wallet interface
-            console.log("⚠️ Max attempts reached, creating minimal wallet interface")
-            const sdkWallet: FrameWallet = {
-              address: "",
-              chainId: "8453",
-              isConnected: false,
-              connect: async () => {
-                console.log("🔗 Attempting SDK wallet connection")
-                // Try to request wallet connection through SDK
-                if ((window as any).farcaster?.sdk?.actions?.requestWallet) {
-                  await (window as any).farcaster.sdk.actions.requestWallet()
-                  console.log("✅ Wallet connection requested")
-                } else {
-                  console.log("❌ No wallet connection method available")
-                  throw new Error("No wallet connection method available")
-                }
-              },
-              sendTransaction: async (tx) => {
-                console.log("💳 Attempting SDK transaction")
-                // Use FarCaster SDK actions for transaction
-                if ((window as any).farcaster?.sdk?.actions?.transaction) {
-                  const result = await (window as any).farcaster.sdk.actions.transaction(tx)
-                  return result?.hash || result
-                }
-                throw new Error("SDK transaction not available")
-              }
-            }
-            setWallet(sdkWallet)
-            console.log("🔧 SDK-only wallet created (no direct wallet access)")
+            })
           }
+          
         } else {
           // Not in Frame context, might be standalone web app
           setIsFrame(false)
@@ -322,6 +263,12 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
     wallet,
     isLoading,
     error,
-    retryDetection
+    retryDetection,
+    
+    // Enhanced features
+    walletState,
+    sendTransaction: (tx: TransactionRequest) => enhancedWalletManager.sendTransaction(tx),
+    requestConnection: () => enhancedWalletManager.requestConnection(),
+    onWalletEvent: (event: string, callback: Function) => enhancedWalletManager.on(event, callback)
   }
 }

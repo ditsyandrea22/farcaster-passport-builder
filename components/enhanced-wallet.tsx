@@ -41,41 +41,65 @@ export function EnhancedWallet({
   } = useFrame()
   const { success, error } = useNotifications()
 
-  // Simplified wallet availability check
+  // Enhanced wallet availability check with auto-detection for Farcaster mini app
   useEffect(() => {
     const checkWalletAvailability = () => {
       if (typeof window !== 'undefined') {
         const farcaster = (window as any).farcaster
         
-        // Simplified wallet detection with clear priority
+        // Enhanced wallet detection for Farcaster mini app
         let hasWallet = false
+        let walletInfo = null
         
         if (farcaster) {
-          // Priority 1: Direct wallet
+          // Priority 1: Direct wallet (most reliable in mini app)
           if (farcaster.wallet && farcaster.wallet.address) {
             hasWallet = true
-            console.log("💰 Wallet found: Direct path")
+            walletInfo = { path: "direct", address: farcaster.wallet.address, chainId: farcaster.wallet.chainId }
+            console.log("💰 Wallet found: Direct path", walletInfo)
           }
           // Priority 2: Frame context wallet
           else if (farcaster.frameContext?.wallet && farcaster.frameContext.wallet.address) {
             hasWallet = true
-            console.log("💰 Wallet found: FrameContext path")
+            walletInfo = { path: "frameContext", address: farcaster.frameContext.wallet.address, chainId: farcaster.frameContext.wallet.chainId }
+            console.log("💰 Wallet found: FrameContext path", walletInfo)
           }
           // Priority 3: SDK wallet
           else if (farcaster.sdk?.wallet && farcaster.sdk.wallet.address) {
             hasWallet = true
-            console.log("💰 Wallet found: SDK path")
+            walletInfo = { path: "sdk", address: farcaster.sdk.wallet.address, chainId: farcaster.sdk.wallet.chainId }
+            console.log("💰 Wallet found: SDK path", walletInfo)
           }
           // Priority 4: SDK context wallet
           else if (farcaster.sdk?.context?.wallet && farcaster.sdk.context.wallet.address) {
             hasWallet = true
-            console.log("💰 Wallet found: SDK Context path")
+            walletInfo = { path: "sdkContext", address: farcaster.sdk.context.wallet.address, chainId: farcaster.sdk.context.wallet.chainId }
+            console.log("💰 Wallet found: SDK Context path", walletInfo)
           }
           // Priority 5: SDK actions (might have wallet access)
           else if (farcaster.sdk?.actions) {
             hasWallet = true
-            console.log("💰 Wallet found: SDK Actions path")
+            walletInfo = { path: "sdkActions", address: null, chainId: "8453" }
+            console.log("💰 Wallet found: SDK Actions path", walletInfo)
           }
+          // Priority 6: Additional mini app wallet detection
+          else if (farcaster.miniApp?.wallet) {
+            hasWallet = true
+            walletInfo = { path: "miniApp", address: farcaster.miniApp.wallet.address, chainId: farcaster.miniApp.wallet.chainId }
+            console.log("💰 Wallet found: MiniApp path", walletInfo)
+          }
+          // Priority 7: Window wallet (fallback for some mini app implementations)
+          else if ((window as any).ethereum || (window as any).farcasterWallet) {
+            hasWallet = true
+            walletInfo = { path: "window", address: (window as any).ethereum?.selectedAddress || (window as any).farcasterWallet?.address, chainId: "8453" }
+            console.log("💰 Wallet found: Window path", walletInfo)
+          }
+        }
+        
+        // Auto-connect if wallet is detected in mini app environment
+        if (hasWallet && walletInfo?.address && !isWalletConnected) {
+          console.log("🔗 Auto-connecting wallet in mini app:", walletInfo)
+          // The connection will be handled by the frame provider
         }
         
         setWalletAvailable(hasWallet)
@@ -87,7 +111,7 @@ export function EnhancedWallet({
     // Check periodically for wallet availability with reasonable intervals
     const interval = setInterval(checkWalletAvailability, 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [isWalletConnected])
 
   // Load balance when wallet is connected
   useEffect(() => {

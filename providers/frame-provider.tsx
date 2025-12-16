@@ -24,6 +24,8 @@ interface FrameWallet {
   }) => Promise<string>
 }
 
+import { enhancedWalletManager, type WalletConnectionState, type TransactionRequest, type TransactionResult } from "@/lib/enhanced-wallet-manager"
+
 interface FrameContextType {
   // Basic context
   isFrame: boolean
@@ -52,6 +54,12 @@ interface FrameContextType {
     body?: string
     icon?: string
   }) => Promise<void>
+  
+  // Enhanced wallet features
+  walletState: WalletConnectionState | null
+  sendTransaction: (tx: TransactionRequest) => Promise<TransactionResult>
+  requestConnection: () => Promise<void>
+  onWalletEvent: (event: string, callback: Function) => () => void
   
   // Utilities
   refreshContext: () => Promise<void>
@@ -215,6 +223,12 @@ export function FrameProvider({ children }: FrameProviderProps) {
     // Enhanced features
     openUrl,
     showNotification,
+    
+    // Enhanced wallet features
+    walletState: enhancedWalletManager.getCurrentState(),
+    sendTransaction: (tx: TransactionRequest) => enhancedWalletManager.sendTransaction(tx),
+    requestConnection: () => enhancedWalletManager.requestConnection(),
+    onWalletEvent: (event: string, callback: Function) => enhancedWalletManager.on(event, callback),
     
     // Utilities
     refreshContext,
