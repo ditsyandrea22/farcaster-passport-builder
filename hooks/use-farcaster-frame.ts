@@ -123,7 +123,7 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const detectionAttempts = useRef(0)
-  const maxAttempts = 10
+  const maxAttempts = 15
 
   // Initialize Frame SDK with immediate ready call
   useImmediateSDKReady()
@@ -145,31 +145,32 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
           hasWallet: !!farcaster?.wallet,
           hasSDK: !!farcaster?.sdk,
           walletInSDK: !!farcaster?.sdk?.wallet,
-          walletInContext: !!farcaster?.frameContext?.wallet
+          walletInContext: !!farcaster?.frameContext?.wallet,
+          isSDKReady
         })
 
-        // Check for Frame context or wallet - try multiple paths
+        // Check for Frame context or wallet - simplified detection
         const frameContext = farcaster?.frameContext
         
-        // Enhanced wallet detection with multiple fallback paths
+        // Simplified wallet detection with clear priority
         let wallet = null
         
-        // Path 1: Direct wallet object
+        // Priority 1: Direct wallet object (most reliable)
         if (farcaster?.wallet?.address) {
           wallet = farcaster.wallet
           console.log("💰 Wallet found via direct path")
         }
-        // Path 2: SDK wallet
-        else if (farcaster?.sdk?.wallet?.address) {
-          wallet = farcaster.sdk.wallet
-          console.log("💰 Wallet found via SDK path")
-        }
-        // Path 3: Frame context wallet
+        // Priority 2: Frame context wallet
         else if (farcaster?.frameContext?.wallet?.address) {
           wallet = farcaster.frameContext.wallet
           console.log("💰 Wallet found via frameContext path")
         }
-        // Path 4: SDK context wallet
+        // Priority 3: SDK wallet
+        else if (farcaster?.sdk?.wallet?.address) {
+          wallet = farcaster.sdk.wallet
+          console.log("💰 Wallet found via SDK path")
+        }
+        // Priority 4: SDK context wallet
         else if (farcaster?.sdk?.context?.wallet?.address) {
           wallet = farcaster.sdk.context.wallet
           console.log("💰 Wallet found via SDK context path")
@@ -195,7 +196,7 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
                 console.log("🔗 Wallet connect called - refreshing wallet state")
                 // Try to get fresh wallet state
                 const farcaster = (window as any).farcaster
-                const freshWallet = farcaster?.wallet || farcaster?.sdk?.wallet || farcaster?.frameContext?.wallet
+                const freshWallet = farcaster?.wallet || farcaster?.frameContext?.wallet || farcaster?.sdk?.wallet
                 
                 if (freshWallet?.address) {
                   setWallet(prev => prev ? {
@@ -254,7 +255,7 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
           } else if (detectionAttempts.current < maxAttempts) {
             // Wallet not detected yet, but we're in Frame environment
             // Schedule another detection attempt with shorter intervals
-            const delay = Math.min(500 * detectionAttempts.current, 2000)
+            const delay = Math.min(200 * detectionAttempts.current, 1500)
             console.log(`🔄 Wallet not detected yet, retrying in ${delay}ms...`)
             setTimeout(detectFrame, delay)
             return

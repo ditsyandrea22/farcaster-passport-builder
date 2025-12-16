@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
+import { AutoCastSuccess } from "@/components/auto-cast-success"
 import { useFarcasterFrame } from "@/hooks/use-farcaster-frame"
 
 interface PassportData {
@@ -34,6 +35,7 @@ export function PassportGenerator() {
   const [error, setError] = useState("")
   const [minting, setMinting] = useState(false)
   const [mintError, setMintError] = useState("")
+  const [mintResult, setMintResult] = useState<any>(null)
   
   // Frame context
   const { isFrame, frameContext, wallet, isLoading: frameLoading } = useFarcasterFrame()
@@ -70,6 +72,7 @@ export function PassportGenerator() {
 
     setMinting(true)
     setMintError("")
+    setMintResult(null)
 
     try {
       if (isFrame && wallet?.isConnected) {
@@ -96,8 +99,13 @@ export function PassportGenerator() {
 
         console.log("Transaction sent:", txHash)
         
-        // Show success message
-        alert("Transaction sent! Your passport NFT is being minted.")
+        // Store mint result for casting
+        setMintResult({
+          success: true,
+          txHash,
+          message: "🎉 NFT minting transaction sent successfully!",
+          shareData: txData.shareData
+        })
         
       } else if (isFrame && !wallet?.isConnected) {
         // Connect wallet first in Frame context
@@ -128,11 +136,24 @@ export function PassportGenerator() {
 
         // Send transaction using web3 wallet (implementation depends on wallet provider)
         console.log("Web app transaction data:", txData)
-        alert("Transaction data prepared. Please use your wallet to send the transaction.")
+        
+        // Store result for casting
+        setMintResult({
+          success: true,
+          txHash: "pending",
+          txData,
+          message: "📋 Transaction data prepared. Please confirm in your wallet.",
+          shareData: txData.shareData
+        })
       }
     } catch (err) {
       console.error("Mint error:", err)
-      setMintError(err instanceof Error ? err.message : "Failed to mint NFT")
+      const errorMessage = err instanceof Error ? err.message : "Failed to mint NFT"
+      setMintError(errorMessage)
+      setMintResult({
+        success: false,
+        error: errorMessage
+      })
     } finally {
       setMinting(false)
     }
@@ -375,6 +396,20 @@ export function PassportGenerator() {
             </div>
           </div>
         </Card>
+      )}
+
+      {/* Auto Cast Success Component */}
+      {mintResult?.success && mintResult?.txHash && passport && (
+        <AutoCastSuccess
+          txHash={mintResult.txHash}
+          fid={passport.fid}
+          score={passport.score}
+          badge={passport.badge}
+          displayName={passport.displayName}
+          totalTransactions={mintResult.shareData?.totalTransactions || passport.txCount}
+          mintResult={mintResult}
+          onClose={() => setMintResult(null)}
+        />
       )}
     </div>
   )

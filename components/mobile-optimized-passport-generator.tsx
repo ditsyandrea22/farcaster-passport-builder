@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge"
 import { LoadingSkeleton, LoadingState } from "@/components/ui/loading-skeleton"
 import { EnhancedShare, ShareButton } from "@/components/enhanced-share"
 import { EnhancedWallet } from "@/components/enhanced-wallet"
-import { AutoCastSuccess } from "@/components/auto-cast-success"
 import { useFrame } from "@/providers/frame-provider"
 import { useNotifications } from "@/components/notification-system"
 import { useAnalytics } from "@/components/analytics-tracker"
@@ -40,7 +39,7 @@ interface TransactionSummary {
   latestTransaction?: any
 }
 
-export function EnhancedPassportGenerator() {
+export function MobileOptimizedPassportGenerator() {
   const [fid, setFid] = useState("")
   const [loading, setLoading] = useState(false)
   const [passport, setPassport] = useState<PassportData | null>(null)
@@ -321,7 +320,7 @@ export function EnhancedPassportGenerator() {
   const totalTransactions = txSummary?.totalTransactions || 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Frame and Wallet Status */}
       <div className="grid grid-cols-1 gap-4">
         {/* Frame Status */}
@@ -376,7 +375,7 @@ export function EnhancedPassportGenerator() {
           </div>
           
           <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
-            Enter your Farcaster ID to generate your reputation passport.
+            Enter your Farcaster ID to generate your reputation passport. 
             {isFrame ? " Wallet will be connected automatically." : " Don't know your FID? "}
             {!isFrame && (
               <a
@@ -417,14 +416,14 @@ export function EnhancedPassportGenerator() {
       {mintResult && (
         <Card className={cn(
           "p-6 border",
-          mintResult.success
-            ? "bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800"
+          mintResult.success 
+            ? "bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800" 
             : "bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800"
         )}>
           <div className={cn(
             "flex items-center gap-2",
-            mintResult.success
-              ? "text-green-600 dark:text-green-400"
+            mintResult.success 
+              ? "text-green-600 dark:text-green-400" 
               : "text-red-600 dark:text-red-400"
           )}>
             <span className="text-xl">{mintResult.success ? "✅" : "❌"}</span>
@@ -451,25 +450,11 @@ export function EnhancedPassportGenerator() {
         </Card>
       )}
 
-      {/* Auto Cast Success Component */}
-      {mintResult?.success && mintResult?.txHash && passport && (
-        <AutoCastSuccess
-          txHash={mintResult.txHash}
-          fid={passport.fid}
-          score={passport.score}
-          badge={passport.badge}
-          displayName={passport.displayName}
-          totalTransactions={mintResult.shareData?.totalTransactions || totalTransactions}
-          mintResult={mintResult}
-          onClose={() => setMintResult(null)}
-        />
-      )}
-
       {/* Passport Display */}
       {passport && !loading && (
-        <div className="space-y-6">
-          {/* Main Passport Card */}
-          <Card className="p-8 bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 text-white shadow-2xl border-0 animate-fade-in-scale overflow-hidden relative">
+        <div className="space-y-4 md:space-y-6">
+          {/* Mobile-Optimized Passport Card */}
+          <Card className="p-4 md:p-6 lg:p-8 bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 text-white shadow-2xl border-0 animate-fade-in-scale overflow-hidden relative">
             {/* Background pattern */}
             <div className="absolute inset-0 opacity-10">
               <div
@@ -481,60 +466,60 @@ export function EnhancedPassportGenerator() {
               />
             </div>
 
-            <div className="relative space-y-6">
+            <div className="relative space-y-4 md:space-y-6">
               {/* Header */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4 flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="flex items-start gap-3 md:gap-4 flex-1">
                   <img
                     src={passport.pfpUrl || "/placeholder.svg"}
                     alt={passport.displayName}
-                    className="w-16 h-16 rounded-full border-2 border-white/50 shadow-lg"
+                    className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-white/50 shadow-lg flex-shrink-0"
                   />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-3xl font-bold">{passport.displayName}</h2>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl md:text-2xl lg:text-3xl font-bold truncate">{passport.displayName}</h2>
                       {passport.powerBadge && <Badge className="bg-yellow-500 text-white text-xs">⚡ Power</Badge>}
                     </div>
-                    <p className="text-white/80">@{passport.username}</p>
-                    <p className="text-sm text-white/60">FID: {passport.fid}</p>
+                    <p className="text-white/80 text-sm md:text-base">@{passport.username}</p>
+                    <p className="text-xs md:text-sm text-white/60">FID: {passport.fid}</p>
                     {passport.bio && <p className="text-sm text-white/80 mt-2 line-clamp-2">{passport.bio}</p>}
                   </div>
                 </div>
                 <Badge
-                  className={cn(`${getBadgeColor(passport.badge)} text-white px-3 py-1 text-sm font-semibold shadow-lg`)}
+                  className={cn(`${getBadgeColor(passport.badge)} text-white px-2 md:px-3 py-1 text-xs md:text-sm font-semibold shadow-lg self-start sm:self-center`)}
                 >
                   {passport.badge}
                 </Badge>
               </div>
 
               {/* Score Section */}
-              <div className="py-8 border-y border-white/20 bg-white/5 rounded-xl">
-                <div className={cn(`text-7xl font-bold text-center ${getScoreColor(passport.score)} drop-shadow-lg`)}>
+              <div className="py-4 md:py-6 lg:py-8 border-y border-white/20 bg-white/5 rounded-xl">
+                <div className={cn(`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-center ${getScoreColor(passport.score)} drop-shadow-lg`)}>
                   {passport.score}
                 </div>
-                <p className="text-center text-white/80 mt-2 text-lg font-medium">Reputation Score</p>
-                <p className="text-center text-white/60 text-sm mt-1">
+                <p className="text-center text-white/80 mt-2 text-base md:text-lg font-medium">Reputation Score</p>
+                <p className="text-center text-white/60 text-xs md:text-sm mt-1">
                   {passport.engagementRate.toFixed(1)}% engagement rate
                 </p>
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                <div className="bg-white/10 rounded-lg p-2 md:p-3 backdrop-blur-sm">
                   <p className="text-xs text-white/60 mb-1">Followers</p>
-                  <p className="text-2xl font-bold">{passport.followers.toLocaleString()}</p>
+                  <p className="text-lg md:text-xl lg:text-2xl font-bold">{passport.followers.toLocaleString()}</p>
                 </div>
-                <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <div className="bg-white/10 rounded-lg p-2 md:p-3 backdrop-blur-sm">
                   <p className="text-xs text-white/60 mb-1">Following</p>
-                  <p className="text-2xl font-bold">{passport.following.toLocaleString()}</p>
+                  <p className="text-lg md:text-xl lg:text-2xl font-bold">{passport.following.toLocaleString()}</p>
                 </div>
-                <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <div className="bg-white/10 rounded-lg p-2 md:p-3 backdrop-blur-sm">
                   <p className="text-xs text-white/60 mb-1">Casts</p>
-                  <p className="text-2xl font-bold">{passport.casts.toLocaleString()}</p>
+                  <p className="text-lg md:text-xl lg:text-2xl font-bold">{passport.casts.toLocaleString()}</p>
                 </div>
-                <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <div className="bg-white/10 rounded-lg p-2 md:p-3 backdrop-blur-sm">
                   <p className="text-xs text-white/60 mb-1">Transactions</p>
-                  <p className="text-2xl font-bold">{passport.txCount.toLocaleString()}</p>
+                  <p className="text-lg md:text-xl lg:text-2xl font-bold">{passport.txCount.toLocaleString()}</p>
                 </div>
               </div>
 
@@ -543,7 +528,7 @@ export function EnhancedPassportGenerator() {
                 <Button
                   onClick={handleMint}
                   disabled={minting || !isWalletConnected}
-                  className="w-full bg-white text-purple-600 hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-lg font-semibold"
+                  className="w-full bg-white text-purple-600 hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-lg font-semibold text-base md:text-lg min-h-[48px] md:min-h-[52px]"
                   size="lg"
                 >
                   {minting ? (
@@ -562,7 +547,7 @@ export function EnhancedPassportGenerator() {
                   variant="outline"
                   size="lg"
                   totalTransactions={totalTransactions}
-                  className="w-full border-white/30 text-white hover:bg-white/10 transition-all duration-300 bg-transparent"
+                  className="w-full border-white/30 text-white hover:bg-white/10 transition-all duration-300 bg-transparent text-base md:text-lg min-h-[48px] md:min-h-[52px]"
                 />
               </div>
             </div>

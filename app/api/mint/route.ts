@@ -16,13 +16,19 @@ export async function POST(req: Request) {
     const fid = searchParams.get("fid")
 
     if (!fid) {
-      return NextResponse.json({ error: "FID required" }, { status: 400, headers: corsHeaders })
+      return NextResponse.json({
+        error: "FID required",
+        details: "Please provide a valid Farcaster FID (Farcaster ID)"
+      }, { status: 400, headers: corsHeaders })
     }
 
     // Validate FID format
     const fidNum = parseInt(fid)
     if (isNaN(fidNum) || fidNum <= 0) {
-      return NextResponse.json({ error: "Invalid FID format" }, { status: 400, headers: corsHeaders })
+      return NextResponse.json({
+        error: "Invalid FID format",
+        details: "FID must be a positive number"
+      }, { status: 400, headers: corsHeaders })
     }
 
     // Get the current host for dynamic URL building
@@ -33,18 +39,29 @@ export async function POST(req: Request) {
     // Fetch score data
     const scoreRes = await fetch(`${baseUrl}/api/score?fid=${fid}`)
     if (!scoreRes.ok) {
-      return NextResponse.json({ error: "Failed to fetch score data" }, { status: 400, headers: corsHeaders })
+      const errorText = await scoreRes.text()
+      console.error("Score API failed:", scoreRes.status, errorText)
+      return NextResponse.json({
+        error: "Failed to fetch score data",
+        details: `Score API returned ${scoreRes.status}: ${errorText}`
+      }, { status: 400, headers: corsHeaders })
     }
     
     const data = await scoreRes.json()
 
     if (data.error) {
-      return NextResponse.json({ error: data.error }, { status: 400, headers: corsHeaders })
+      return NextResponse.json({
+        error: data.error,
+        details: data.details || "Failed to retrieve user score data"
+      }, { status: 400, headers: corsHeaders })
     }
 
     // Validate required score data
     if (!data.score || !data.badge) {
-      return NextResponse.json({ error: "Invalid score data received" }, { status: 400, headers: corsHeaders })
+      return NextResponse.json({
+        error: "Invalid score data received",
+        details: "Score and badge data are required for minting"
+      }, { status: 400, headers: corsHeaders })
     }
 
     // Get user's wallet address from request (Frame context will provide this)
@@ -58,7 +75,8 @@ export async function POST(req: Request) {
 
     if (!userAddress && !isFrameRequest) {
       return NextResponse.json({
-        error: "User address required for web app. For Frame, wallet will be connected automatically."
+        error: "User address required for web app",
+        details: "For Frame, wallet will be connected automatically. For web app, please provide wallet address."
       }, { status: 400, headers: corsHeaders })
     }
 
@@ -94,23 +112,41 @@ export async function POST(req: Request) {
     // Check if contract address is configured
     if (!contractAddress || contractAddress === "0x0000000000000000000000000000000000000000") {
       return NextResponse.json({
-        error: "Contract address not configured. Please set NEXT_PUBLIC_CONTRACT_ADDRESS in environment variables."
+        error: "Contract address not configured",
+        details: "Smart contract address is missing. Please deploy the contract and set NEXT_PUBLIC_CONTRACT_ADDRESS in environment variables.",
+        contractAddress: contractAddress || "not set"
+      }, { status: 500, headers: corsHeaders })
+    }
+
+    // Validate contract address format
+    if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress)) {
+      return NextResponse.json({
+        error: "Invalid contract address format",
+        details: "Contract address must be a valid 42-character Ethereum address starting with 0x",
+        contractAddress
       }, { status: 500, headers: corsHeaders })
     }
 
     // Get transaction history for enhanced sharing
     const txSummary = transactionHistory.getTransactionSummary(fidNum)
     
-    // Generate enhanced share content
+    // Generate enhanced share content for NFT mint success
     const enhancedShareData = {
-      text: `My Farcaster Reputation Score is ${data.score} ${data.badge} 🎯\nTotal Transactions: ${txSummary.totalTransactions + 1} 🚀`,
+      text: `🎉 Just minted my Farcaster Reputation Passport NFT!\n\n📊 Score: ${data.score} ${data.badge}\n🚀 Total Transactions: ${txSummary.totalTransactions + 1}\n\nGenerate your own reputation passport:`,
       url: `${baseUrl}?fid=${fid}`,
-      title: `${data.displayName || 'User'}'s Reputation Passport`,
-      description: `Score: ${data.score} | Badge: ${data.badge} | Transactions: ${txSummary.totalTransactions + 1}`,
+      title: `${data.displayName || 'User'}'s Reputation Passport NFT`,
+      description: `Score: ${data.score} | Badge: ${data.badge} | TX: [pending] | Total Transactions: ${txSummary.totalTransactions + 1}`,
       image: `${baseUrl}/api/passport-nft/${fid}`,
       transactionBadges: txSummary.badges,
       totalTransactions: txSummary.totalTransactions + 1,
-      previousTransactions: txSummary.totalTransactions
+      previousTransactions: txSummary.totalTransactions,
+      isNftMint: true,
+      mintData: {
+        score: data.score,
+        badge: data.badge,
+        fid: fidNum,
+        displayName: data.displayName || 'User'
+      }
     }
 
     if (isFrameRequest) {
@@ -163,29 +199,54 @@ export async function POST(req: Request) {
       return NextResponse.json(tx, { headers: corsHeaders })
     }
   } catch (error) {
-    // Provide more specific error messages
+    // Provide more specific error messages with better context
     let errorMessage = "Internal server error"
     let statusCode = 500
+    let errorDetails = ""
 
     if (error instanceof Error) {
       if (error.message.includes("FID")) {
         errorMessage = "Invalid FID provided"
+        errorDetails = "Please provide a valid positive integer FID"
         statusCode = 400
-      } else if (error.message.includes("fetch")) {
+      } else if (error.message.includes("fetch") || error.message.includes("Failed to fetch")) {
         errorMessage = "Failed to fetch user data"
+        errorDetails = "Unable to retrieve Farcaster user information. Please check if the FID exists and try again."
         statusCode = 400
       } else if (error.message.includes("Contract")) {
         errorMessage = "Contract configuration error"
+        errorDetails = "Smart contract is not properly configured. Please check contract deployment and environment variables."
         statusCode = 500
+      } else if (error.message.includes("API request failed")) {
+        errorMessage = "Server API error"
+        errorDetails = "Internal API request failed. Please try again in a moment."
+        statusCode = 500
+      } else if (error.message.includes("Invalid") && error.message.includes("data")) {
+        errorMessage = "Invalid data received"
+        errorDetails = "User data is incomplete or malformed. Please try again with a different FID."
+        statusCode = 400
+      } else {
+        errorMessage = error.message
+        errorDetails = "An unexpected error occurred during minting process"
       }
+    } else {
+      errorDetails = "Unknown error type encountered"
     }
 
-    return NextResponse.json({ 
-      error: errorMessage,
+    console.error("Mint API error:", {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
       timestamp: new Date().toISOString()
-    }, { 
-      status: statusCode, 
-      headers: corsHeaders 
+    })
+
+    return NextResponse.json({
+      error: errorMessage,
+      details: errorDetails,
+      timestamp: new Date().toISOString(),
+      requestId: Math.random().toString(36).substring(7) // For tracking
+    }, {
+      status: statusCode,
+      headers: corsHeaders
     })
   }
 }

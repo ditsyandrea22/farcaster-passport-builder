@@ -41,37 +41,37 @@ export function EnhancedWallet({
   } = useFrame()
   const { success, error } = useNotifications()
 
-  // Enhanced wallet availability check with more paths
+  // Simplified wallet availability check
   useEffect(() => {
     const checkWalletAvailability = () => {
       if (typeof window !== 'undefined') {
         const farcaster = (window as any).farcaster
         
-        // Check for various wallet availability patterns in FarCaster SDK
+        // Simplified wallet detection with clear priority
         let hasWallet = false
         
         if (farcaster) {
-          // Direct wallet
+          // Priority 1: Direct wallet
           if (farcaster.wallet && farcaster.wallet.address) {
             hasWallet = true
             console.log("💰 Wallet found: Direct path")
           }
-          // SDK wallet
-          else if (farcaster.sdk?.wallet && farcaster.sdk.wallet.address) {
-            hasWallet = true
-            console.log("💰 Wallet found: SDK path")
-          }
-          // Frame context wallet
+          // Priority 2: Frame context wallet
           else if (farcaster.frameContext?.wallet && farcaster.frameContext.wallet.address) {
             hasWallet = true
             console.log("💰 Wallet found: FrameContext path")
           }
-          // SDK context wallet
+          // Priority 3: SDK wallet
+          else if (farcaster.sdk?.wallet && farcaster.sdk.wallet.address) {
+            hasWallet = true
+            console.log("💰 Wallet found: SDK path")
+          }
+          // Priority 4: SDK context wallet
           else if (farcaster.sdk?.context?.wallet && farcaster.sdk.context.wallet.address) {
             hasWallet = true
             console.log("💰 Wallet found: SDK Context path")
           }
-          // SDK actions available (might have wallet access)
+          // Priority 5: SDK actions (might have wallet access)
           else if (farcaster.sdk?.actions) {
             hasWallet = true
             console.log("💰 Wallet found: SDK Actions path")
@@ -84,8 +84,8 @@ export function EnhancedWallet({
 
     checkWalletAvailability()
     
-    // Check periodically for wallet availability
-    const interval = setInterval(checkWalletAvailability, 500)
+    // Check periodically for wallet availability with reasonable intervals
+    const interval = setInterval(checkWalletAvailability, 1000)
     return () => clearInterval(interval)
   }, [])
 
@@ -134,14 +134,22 @@ export function EnhancedWallet({
       } else {
         // Try to trigger wallet connection in FarCaster
         if ((window as any).farcaster?.sdk?.actions?.requestWallet) {
-          await (window as any).farcaster.sdk.actions.requestWallet()
-          success("Wallet connection requested", "Please check your FarCast wallet")
+          try {
+            await (window as any).farcaster.sdk.actions.requestWallet()
+            success("Wallet connection requested", "Please check your FarCaster wallet")
+          } catch (requestErr) {
+            console.error("Wallet request failed:", requestErr)
+            error("Connection request failed", "Failed to request wallet connection. Please try again.")
+          }
         } else {
-          success("Wallet ready", "Your FarCaster wallet should be connected")
+          // For auto-connected wallets, just confirm status
+          success("Wallet ready", "Your FarCaster wallet should be connected automatically")
         }
       }
     } catch (err) {
-      error("Connection failed", "Failed to connect wallet. Please try again.")
+      console.error("Connection error:", err)
+      const errorMessage = err instanceof Error ? err.message : "Unknown connection error"
+      error("Connection failed", `Failed to connect wallet: ${errorMessage}`)
     } finally {
       setIsConnecting(false)
     }
