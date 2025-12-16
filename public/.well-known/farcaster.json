@@ -12,7 +12,7 @@
     "iconUrl": "https://farcaster-passport-builder.vercel.app/icon.jpg",
     "splashImageUrl": "https://farcaster-passport-builder.vercel.app/splash.jpg",
     "splashBackgroundColor": "#8b5cf6",
-    "subtitle": "Build your decentralized reputation",
+    "subtitle": "Your on-chain reputation",
     "description": "Generate and mint your on-chain reputation passport NFT powered by Farcaster activity and Base blockchain",
     "primaryCategory": "social",
     "tags": ["reputation", "nft", "identity", "blockchain", "social"],
