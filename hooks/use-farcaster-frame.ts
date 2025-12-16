@@ -89,7 +89,7 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const detectionAttempts = useRef(0)
-  const maxAttempts = 10
+  const maxAttempts = 15
 
   // Initialize Frame SDK
   const isSDKReady = useFrameSDK()
@@ -115,7 +115,12 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
 
         // Check for Frame context or wallet - try multiple paths
         const frameContext = farcaster?.frameContext
-        const wallet = farcaster?.wallet || farcaster?.sdk?.wallet || farcaster?.frameContext?.wallet
+        let wallet = farcaster?.wallet || farcaster?.sdk?.wallet || farcaster?.frameContext?.wallet
+        
+        // Enhanced wallet detection
+        if (!wallet && farcaster?.sdk?.context?.wallet) {
+          wallet = farcaster.sdk.context.wallet
+        }
         
         if (frameContext || wallet || farcaster?.sdk) {
           setIsFrame(true)
@@ -126,7 +131,7 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
           }
           
           // Set up wallet if available
-          if (wallet) {
+          if (wallet && wallet.address) {
             const frameWallet: FrameWallet = {
               address: wallet.address || "",
               chainId: wallet.chainId || "8453", // Base network
@@ -170,10 +175,36 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
             console.log("Wallet detected and initialized:", frameWallet)
           } else if (detectionAttempts.current < maxAttempts) {
             // Wallet not detected yet, but we're in Frame environment
-            // Schedule another detection attempt
-            console.log("Wallet not detected yet, retrying in 500ms...")
-            setTimeout(detectFrame, 500)
+            // Schedule another detection attempt with exponential backoff
+            const delay = Math.min(1000 * Math.pow(1.5, detectionAttempts.current), 5000)
+            console.log(`Wallet not detected yet, retrying in ${delay}ms...`)
+            setTimeout(detectFrame, delay)
             return
+          } else {
+            // Max attempts reached, but we still don't have wallet
+            // Create a minimal wallet interface for SDK-only operations
+            const sdkWallet: FrameWallet = {
+              address: "",
+              chainId: "8453",
+              isConnected: false,
+              connect: async () => {
+                console.log("SDK-only wallet connect attempted")
+                // Try to request wallet connection through SDK
+                if ((window as any).farcaster?.sdk?.actions?.requestWallet) {
+                  await (window as any).farcaster.sdk.actions.requestWallet()
+                }
+              },
+              sendTransaction: async (tx) => {
+                // Use FarCaster SDK actions for transaction
+                if ((window as any).farcaster?.sdk?.actions?.transaction) {
+                  const result = await (window as any).farcaster.sdk.actions.transaction(tx)
+                  return result?.hash || result
+                }
+                throw new Error("SDK transaction not available")
+              }
+            }
+            setWallet(sdkWallet)
+            console.log("SDK-only wallet created (no direct wallet access)")
           }
         } else {
           // Not in Frame context, might be standalone web app

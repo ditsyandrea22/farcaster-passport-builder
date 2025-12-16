@@ -16,6 +16,8 @@ export class FarCasterWalletManager {
   private static instance: FarCasterWalletManager
   private wallet: FarCasterWallet | null = null
   private isInitialized = false
+  private detectionAttempts = 0
+  private maxAttempts = 10
 
   private constructor() {}
 
@@ -33,11 +35,17 @@ export class FarCasterWalletManager {
     const farcaster = (window as any).farcaster
     if (!farcaster) return null
 
+    this.detectionAttempts++
+
     // Try multiple wallet detection paths
     const walletSources = [
+      // Direct wallet
       farcaster.wallet,
+      // SDK wallet
       farcaster.sdk?.wallet,
+      // Frame context wallet
       farcaster.frameContext?.wallet,
+      // SDK context wallet
       farcaster.sdk?.context?.wallet
     ]
 
@@ -50,11 +58,18 @@ export class FarCasterWalletManager {
       }
     }
 
-    // If no wallet found, check for SDK that might provide wallet access
+    // If no direct wallet found, check for SDK that might provide wallet access
     if (farcaster.sdk?.actions) {
       this.wallet = this.createSDKWalletInterface()
       this.isInitialized = true
+      console.log("SDK wallet interface created")
       return this.wallet
+    }
+
+    // If we've exhausted attempts, return null
+    if (this.detectionAttempts >= this.maxAttempts) {
+      console.warn("Max wallet detection attempts reached")
+      return null
     }
 
     return null
@@ -67,8 +82,13 @@ export class FarCasterWalletManager {
       isConnected: !!walletSource.address,
       sendTransaction: async (tx) => {
         if (walletSource.sendTransaction) {
-          const result = await walletSource.sendTransaction(tx)
-          return result?.hash || result
+          try {
+            const result = await walletSource.sendTransaction(tx)
+            return result?.hash || result
+          } catch (err) {
+            console.error("Direct wallet transaction failed:", err)
+            throw err
+          }
         }
         throw new Error("Wallet transaction not supported")
       }
@@ -82,11 +102,28 @@ export class FarCasterWalletManager {
       isConnected: false,
       sendTransaction: async (tx) => {
         const farcaster = (window as any).farcaster
-        if (farcaster?.sdk?.actions?.transaction) {
-          const result = await farcaster.sdk.actions.transaction(tx)
-          return result?.hash || result
+        
+        // Try multiple SDK transaction methods
+        const sdkMethods = [
+          'transaction',
+          'sendTransaction', 
+          'eth_sendTransaction',
+          'requestTransaction'
+        ]
+
+        for (const method of sdkMethods) {
+          if (farcaster?.sdk?.actions?.[method]) {
+            try {
+              const result = await farcaster.sdk.actions[method](tx)
+              return result?.hash || result
+            } catch (err) {
+              console.warn(`SDK method ${method} failed:`, err)
+              continue
+            }
+          }
         }
-        throw new Error("SDK transaction not supported")
+
+        throw new Error("No supported transaction method found in SDK")
       }
     }
   }
@@ -120,13 +157,17 @@ export class FarCasterWalletManager {
 
     // Fallback to FarCaster SDK
     const farcaster = (window as any).farcaster
-    if (farcaster?.sdk?.actions?.transaction) {
-      try {
-        const result = await farcaster.sdk.actions.transaction(tx)
-        return result?.hash || result
-      } catch (err) {
-        console.warn("SDK transaction failed:", err)
-        throw new Error("Transaction failed: SDK method unavailable")
+    const sdkMethods = ['transaction', 'sendTransaction', 'eth_sendTransaction']
+    
+    for (const method of sdkMethods) {
+      if (farcaster?.sdk?.actions?.[method]) {
+        try {
+          const result = await farcaster.sdk.actions[method](tx)
+          return result?.hash || result
+        } catch (err) {
+          console.warn(`SDK method ${method} failed:`, err)
+          continue
+        }
       }
     }
 
@@ -136,19 +177,42 @@ export class FarCasterWalletManager {
   // Request wallet connection (for wallets that support it)
   async requestWalletConnection(): Promise<void> {
     const farcaster = (window as any).farcaster
-    if (farcaster?.sdk?.actions?.requestWallet) {
-      await farcaster.sdk.actions.requestWallet()
-    } else {
-      // For auto-connected wallets, just trigger a refresh
-      window.location.reload()
+    
+    // Try multiple connection request methods
+    const connectionMethods = [
+      'requestWallet',
+      'connectWallet',
+      'openWallet',
+      'requestConnection'
+    ]
+
+    for (const method of connectionMethods) {
+      if (farcaster?.sdk?.actions?.[method]) {
+        try {
+          await farcaster.sdk.actions[method]()
+          return
+        } catch (err) {
+          console.warn(`Connection method ${method} failed:`, err)
+          continue
+        }
+      }
     }
+
+    // For auto-connected wallets, just trigger a refresh
+    console.log("No connection method available, triggering refresh")
+    window.location.reload()
   }
 
   // Check if we're in a FarCaster Frame environment
   isInFrame(): boolean {
     if (typeof window === 'undefined') return false
     const farcaster = (window as any).farcaster
-    return !!(farcaster?.frameContext || farcaster?.wallet || farcaster?.sdk)
+    return !!(
+      farcaster?.frameContext || 
+      farcaster?.wallet || 
+      farcaster?.sdk ||
+      farcaster?.sdk?.actions
+    )
   }
 
   // Get frame context information
@@ -160,11 +224,29 @@ export class FarCasterWalletManager {
   // Monitor wallet state changes
   onWalletStateChange(callback: (wallet: FarCasterWallet | null) => void): () => void {
     const interval = setInterval(async () => {
-      const currentWallet = await this.detectWallet()
-      callback(currentWallet)
+      try {
+        const currentWallet = await this.detectWallet()
+        callback(currentWallet)
+      } catch (err) {
+        console.error("Wallet state change detection failed:", err)
+      }
     }, 1000)
 
     return () => clearInterval(interval)
+  }
+
+  // Reset detection attempts
+  resetDetection(): void {
+    this.detectionAttempts = 0
+  }
+
+  // Get detection status
+  getDetectionStatus(): { attempts: number; maxAttempts: number; isInitialized: boolean } {
+    return {
+      attempts: this.detectionAttempts,
+      maxAttempts: this.maxAttempts,
+      isInitialized: this.isInitialized
+    }
   }
 }
 
@@ -175,6 +257,7 @@ export const walletManager = FarCasterWalletManager.getInstance()
 export const WalletUtils = {
   // Format address for display
   formatAddress: (address: string): string => {
+    if (!address) return ""
     return `${address.slice(0, 6)}...${address.slice(-4)}`
   },
 
@@ -185,8 +268,12 @@ export const WalletUtils = {
 
   // Convert wei to ether (if needed)
   weiToEther: (wei: string): string => {
-    const ether = parseInt(wei) / 1e18
-    return ether.toFixed(4)
+    try {
+      const ether = parseInt(wei) / 1e18
+      return ether.toFixed(4)
+    } catch {
+      return "0.0000"
+    }
   },
 
   // Check if wallet is connected and ready
@@ -204,5 +291,49 @@ export const WalletUtils = {
       "10": "Optimism"
     }
     return networks[chainId] || "Unknown Network"
+  },
+
+  // Enhanced wallet detection with detailed logging
+  detectWalletWithLogging: async (): Promise<FarCasterWallet | null> => {
+    console.log("Starting enhanced wallet detection...")
+    
+    if (typeof window === 'undefined') {
+      console.log("No window object available")
+      return null
+    }
+
+    const farcaster = (window as any).farcaster
+    console.log("Farcaster object:", !!farcaster)
+
+    if (!farcaster) {
+      console.log("No farcaster object found")
+      return null
+    }
+
+    // Log all available properties
+    console.log("Farcaster properties:", {
+      wallet: !!farcaster.wallet,
+      sdk: !!farcaster.sdk,
+      frameContext: !!farcaster.frameContext,
+      actions: !!farcaster.sdk?.actions
+    })
+
+    return walletManager.detectWallet()
+  },
+
+  // Test wallet connection
+  testWalletConnection: async (wallet: FarCasterWallet): Promise<boolean> => {
+    try {
+      if (!wallet.address) {
+        console.log("No wallet address available")
+        return false
+      }
+      
+      console.log("Testing wallet connection for address:", wallet.address)
+      return wallet.isConnected
+    } catch (err) {
+      console.error("Wallet connection test failed:", err)
+      return false
+    }
   }
 }

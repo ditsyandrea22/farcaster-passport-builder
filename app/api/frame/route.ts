@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { transactionHistory } from "@/lib/transaction-history"
 
 export async function POST(req: Request) {
   // Add CORS headers to all responses
@@ -46,7 +47,13 @@ export async function POST(req: Request) {
       )
     }
 
+    // Get transaction history for enhanced sharing
+    const txSummary = transactionHistory.getTransactionSummary(fid)
+    
     const imageUrl = `${baseUrl}/api/frame/image?fid=${fid}&score=${scoreData.score}&badge=${scoreData.badge}&username=${scoreData.username}`
+
+    // Enhanced share text with transaction history
+    const enhancedShareText = `My Farcaster Reputation Score is ${scoreData.score} ${scoreData.badge} 🎯\nTotal Transactions: ${txSummary.totalTransactions} 🚀`
 
     return NextResponse.json(
       {
@@ -60,8 +67,14 @@ export async function POST(req: Request) {
           {
             label: "Share",
             action: "link",
-            target: `https://warpcast.com/~/compose?text=My%20Farcaster%20Reputation%20Score%20is%20${scoreData.score}%20${scoreData.badge}%20🎯`,
+            target: `https://warpcast.com/~/compose?text=${encodeURIComponent(enhancedShareText + `\n\nGenerate yours: ${baseUrl}?fid=${fid}`)}`,
           },
+          // Add a new button to view transaction history if user has previous transactions
+          ...(txSummary.totalTransactions > 0 ? [{
+            label: `📊 History (${txSummary.totalTransactions})`,
+            action: "link",
+            target: `${baseUrl}?fid=${fid}&view=history`
+          }] : [])
         ],
       },
       { headers: corsHeaders },

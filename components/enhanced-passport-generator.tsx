@@ -33,15 +33,23 @@ interface PassportData {
   engagementRate: number
 }
 
+interface TransactionSummary {
+  totalTransactions: number
+  badges: string[]
+  latestTransaction?: any
+}
+
 export function EnhancedPassportGenerator() {
   const [fid, setFid] = useState("")
   const [loading, setLoading] = useState(false)
   const [passport, setPassport] = useState<PassportData | null>(null)
   const [error, setError] = useState("")
   const [minting, setMinting] = useState(false)
+  const [mintResult, setMintResult] = useState<any>(null)
+  const [txSummary, setTxSummary] = useState<TransactionSummary | null>(null)
   
   // Enhanced features
-  const { isFrame, wallet, user } = useFrame()
+  const { isFrame, wallet, user, isWalletConnected } = useFrame()
   const { success, error: showError } = useNotifications()
   const { trackPassportGenerated, trackNFTMinted, trackShareCompleted } = useAnalytics()
 
@@ -51,6 +59,29 @@ export function EnhancedPassportGenerator() {
       setFid(user.fid.toString())
     }
   }, [user, fid])
+
+  // Load transaction history when passport is loaded
+  useEffect(() => {
+    if (passport?.fid) {
+      loadTransactionHistory(passport.fid)
+    }
+  }, [passport?.fid])
+
+  const loadTransactionHistory = async (fid: number) => {
+    try {
+      const response = await fetch(`/api/transaction-history?fid=${fid}`)
+      if (response.ok) {
+        const data = await response.json()
+        setTxSummary({
+          totalTransactions: data.totalTransactions || 0,
+          badges: data.badges || [],
+          latestTransaction: data.latestTransaction
+        })
+      }
+    } catch (err) {
+      console.error("Failed to load transaction history:", err)
+    }
+  }
 
   const generatePassport = async () => {
     if (!fid) {
@@ -85,9 +116,18 @@ export function EnhancedPassportGenerator() {
   const handleMint = async () => {
     if (!passport) return
 
+    if (!isWalletConnected || !wallet) {
+      showError("Wallet Required", "Please connect your wallet to mint")
+      return
+    }
+
     setMinting(true)
+    setMintResult(null)
+    
     try {
-      const response = await fetch(`/api/mint?fid=${passport.fid}`, {
+      // Step 1: Get transaction data from API
+      const mintUrl = `/api/mint?fid=${passport.fid}${wallet.address ? `&userAddress=${wallet.address}` : ''}`
+      const response = await fetch(mintUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,44 +140,83 @@ export function EnhancedPassportGenerator() {
         throw new Error(txData.error)
       }
 
-      if (wallet?.isConnected && wallet.sendTransaction) {
-        // Frame wallet minting
-        try {
-          const txHash = await wallet.sendTransaction({
-            to: txData.params.to,
-            data: txData.params.data,
-            value: txData.params.value,
-          })
+      console.log("Mint transaction data received:", txData)
 
-          success("Transaction Sent", `NFT minting initiated: ${txHash.slice(0, 10)}...`)
-          trackNFTMinted(passport.fid, txData.tokenId, txHash)
-        } catch (txErr) {
-          // Try using FarCaster SDK actions as fallback
-          if ((window as any).farcaster?.sdk?.actions?.transaction) {
-            try {
-              const result = await (window as any).farcaster.sdk.actions.transaction({
-                to: txData.params.to,
-                data: txData.params.data,
-                value: txData.params.value,
-              })
-              const txHash = result?.hash || result
-              success("Transaction Sent", `NFT minting initiated: ${txHash.slice(0, 10)}...`)
-              trackNFTMinted(passport.fid, txData.tokenId, txHash)
-            } catch (sdkErr) {
-              const errorMsg = txErr instanceof Error ? txErr.message : "Unknown error"
-              throw new Error(`Transaction failed: ${errorMsg}`)
-            }
-          } else {
-            const errorMsg = txErr instanceof Error ? txErr.message : "Unknown error"
-            throw new Error(`Transaction failed: ${errorMsg}`)
+      // Step 2: Send transaction through wallet
+      let txHash = ""
+      
+      if (isFrame) {
+        // Frame wallet minting - try multiple methods
+        try {
+          // Method 1: Direct wallet transaction
+          if (wallet?.sendTransaction && txData.params) {
+            txHash = await wallet.sendTransaction({
+              to: txData.params.to,
+              data: txData.params.data,
+              value: txData.params.value,
+            })
           }
+          // Method 2: SDK transaction
+          else if ((window as any).farcaster?.sdk?.actions?.transaction) {
+            const result = await (window as any).farcaster.sdk.actions.transaction({
+              to: txData.params.to,
+              data: txData.params.data,
+              value: txData.params.value,
+            })
+            txHash = result?.hash || result
+          }
+          // Method 3: Direct transaction through SDK
+          else if ((window as any).farcaster?.sdk?.actions?.sendTransaction) {
+            const result = await (window as any).farcaster.sdk.actions.sendTransaction({
+              to: txData.params.to,
+              data: txData.params.data,
+              value: txData.params.value,
+            })
+            txHash = result?.hash || result
+          }
+          else {
+            throw new Error("No transaction method available in Frame SDK")
+          }
+          
+          success("Transaction Sent", `NFT minting initiated: ${txHash.slice(0, 10)}...`)
+          
+          setMintResult({
+            success: true,
+            txHash,
+            message: "NFT minting transaction sent successfully!",
+            shareData: txData.shareData
+          })
+          
+          trackNFTMinted(passport.fid, "", txHash)
+          
+          // Reload transaction history after successful mint
+          setTimeout(() => {
+            loadTransactionHistory(passport.fid)
+          }, 2000)
+          
+        } catch (txErr) {
+          console.error("Frame transaction failed:", txErr)
+          throw new Error(`Frame transaction failed: ${txErr instanceof Error ? txErr.message : "Unknown error"}`)
         }
       } else {
-        showError("Wallet Required", "Please connect your wallet to mint")
+        // Web app minting - return transaction data for external wallet
+        setMintResult({
+          success: true,
+          txData,
+          message: "Transaction data prepared. Please confirm in your wallet.",
+          shareData: txData.shareData
+        })
+        success("Transaction Ready", "Please confirm the transaction in your wallet")
       }
+      
     } catch (err) {
+      console.error("Mint error:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to mint NFT"
       showError("Mint Failed", errorMessage)
+      setMintResult({
+        success: false,
+        error: errorMessage
+      })
     } finally {
       setMinting(false)
     }
@@ -171,6 +250,8 @@ export function EnhancedPassportGenerator() {
     if (score >= 400) return "text-yellow-400"
     return "text-gray-400"
   }
+
+  const totalTransactions = txSummary?.totalTransactions || 0
 
   return (
     <div className="space-y-6">
@@ -264,6 +345,44 @@ export function EnhancedPassportGenerator() {
         </Card>
       )}
 
+      {/* Mint Result */}
+      {mintResult && (
+        <Card className={cn(
+          "p-6 border",
+          mintResult.success 
+            ? "bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800" 
+            : "bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800"
+        )}>
+          <div className={cn(
+            "flex items-center gap-2",
+            mintResult.success 
+              ? "text-green-600 dark:text-green-400" 
+              : "text-red-600 dark:text-red-400"
+          )}>
+            <span className="text-xl">{mintResult.success ? "✅" : "❌"}</span>
+            <div>
+              <h3 className="font-semibold">{mintResult.success ? "Mint Initiated" : "Mint Failed"}</h3>
+              <p className="text-sm mt-1">{mintResult.message || mintResult.error}</p>
+              {mintResult.txHash && (
+                <p className="text-xs mt-2 font-mono break-all">
+                  Tx: {mintResult.txHash}
+                </p>
+              )}
+              {mintResult.success && mintResult.shareData && (
+                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/50 rounded-lg">
+                  <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                    🎉 Ready to Share!
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    Your enhanced share includes total transactions: {mintResult.shareData.totalTransactions}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Passport Display */}
       {passport && !loading && (
         <div className="space-y-6">
@@ -341,7 +460,7 @@ export function EnhancedPassportGenerator() {
               <div className="pt-4 space-y-3">
                 <Button
                   onClick={handleMint}
-                  disabled={minting || !wallet?.isConnected}
+                  disabled={minting || !isWalletConnected}
                   className="w-full bg-white text-purple-600 hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-lg font-semibold"
                   size="lg"
                 >
@@ -360,20 +479,25 @@ export function EnhancedPassportGenerator() {
                   url={typeof window !== 'undefined' ? window.location.href : ''}
                   variant="outline"
                   size="lg"
+                  totalTransactions={totalTransactions}
                   className="w-full border-white/30 text-white hover:bg-white/10 transition-all duration-300 bg-transparent"
                 />
               </div>
             </div>
           </Card>
 
-          {/* Enhanced Share Component */}
+          {/* Enhanced Share Component with Transaction History */}
           <EnhancedShare
             text={`My Farcaster Reputation Score is ${passport.score} ${passport.badge} 🎯`}
             url={typeof window !== 'undefined' ? window.location.href : ''}
             title={`${passport.displayName}'s Reputation Passport`}
-            description={`Score: ${passport.score} | ${passport.followers.toLocaleString()} followers`}
+            description={`Score: ${passport.score} | Badge: ${passport.badge} | Total Transactions: ${totalTransactions}`}
             image={passport.pfpUrl}
             showPreview
+            transactionBadges={txSummary?.badges || []}
+            totalTransactions={totalTransactions}
+            score={passport.score}
+            badge={passport.badge}
           />
         </div>
       )}

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/ui/loading-skeleton"
+import { Badge } from "@/components/ui/badge"
 import { useFrame } from "@/providers/frame-provider"
 import { cn } from "@/lib/utils"
 
@@ -15,6 +16,10 @@ interface EnhancedShareProps {
   image?: string
   className?: string
   showPreview?: boolean
+  transactionBadges?: string[]
+  totalTransactions?: number
+  score?: number
+  badge?: string
 }
 
 export function EnhancedShare({ 
@@ -24,14 +29,19 @@ export function EnhancedShare({
   description, 
   image,
   className,
-  showPreview = true 
+  showPreview = true,
+  transactionBadges = [],
+  totalTransactions = 0,
+  score,
+  badge
 }: EnhancedShareProps) {
   const [isSharing, setIsSharing] = useState(false)
   const [shareResult, setShareResult] = useState<any>(null)
   const { isFrame, share, openUrl } = useFrame()
 
   const shareToWarpcast = () => {
-    const shareText = url ? `${text}${url}` : text
+    const enhancedText = `${text}\n\n🚀 Total Transactions: ${totalTransactions}`
+    const shareText = url ? `${enhancedText} ${url}` : enhancedText
     const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`
     openUrl(warpcastUrl)
   }
@@ -41,8 +51,10 @@ export function EnhancedShare({
 
     setIsSharing(true)
     try {
+      const enhancedText = `${text}\n\n🚀 Total Transactions: ${totalTransactions}`
+      
       const shareData = {
-        text,
+        text: enhancedText,
         url,
         title,
         description,
@@ -54,7 +66,6 @@ export function EnhancedShare({
       
       // Show success feedback
       if (result) {
-        // You could show a toast or notification here
         console.log("Share successful:", result)
       }
     } catch (err) {
@@ -71,6 +82,23 @@ export function EnhancedShare({
       shareToFarcaster()
     } else {
       shareToWarpcast()
+    }
+  }
+
+  const getTransactionBadgeColor = (badge: string) => {
+    switch (badge) {
+      case "First Mint":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "Collector":
+        return "bg-blue-100 text-blue-800 border-blue-200"
+      case "Veteran":
+        return "bg-purple-100 text-purple-800 border-purple-200"
+      case "Legend":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "Master":
+        return "bg-red-100 text-red-800 border-red-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
     }
   }
 
@@ -92,9 +120,34 @@ export function EnhancedShare({
             {description && (
               <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>
             )}
-            <p className="text-sm">{text}</p>
+            <div className="space-y-2">
+              <p className="text-sm">{text}</p>
+              {totalTransactions > 0 && (
+                <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+                  🚀 Total Transactions: {totalTransactions}
+                </p>
+              )}
+            </div>
             {url && (
               <p className="text-xs text-blue-600 dark:text-blue-400">{url}</p>
+            )}
+            
+            {/* Transaction Badges */}
+            {transactionBadges.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Achievement Badges:</p>
+                <div className="flex flex-wrap gap-1">
+                  {transactionBadges.map((txBadge, index) => (
+                    <Badge 
+                      key={index}
+                      variant="outline" 
+                      className={cn("text-xs", getTransactionBadgeColor(txBadge))}
+                    >
+                      🏆 {txBadge}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -145,16 +198,27 @@ interface ShareButtonProps {
   className?: string
   variant?: "default" | "outline" | "secondary"
   size?: "default" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg"
+  totalTransactions?: number
 }
 
-export function ShareButton({ text, url, className, variant = "outline", size = "sm" }: ShareButtonProps) {
+export function ShareButton({ 
+  text, 
+  url, 
+  className, 
+  variant = "outline", 
+  size = "sm",
+  totalTransactions = 0
+}: ShareButtonProps) {
   const [isSharing, setIsSharing] = useState(false)
   const { isFrame, share, openUrl } = useFrame()
 
   const handleShare = async () => {
     setIsSharing(true)
     try {
-      const shareText = url ? `${text}${url}` : text
+      const enhancedText = totalTransactions > 0 
+        ? `${text}\n\n🚀 Total Transactions: ${totalTransactions}`
+        : text
+      const shareText = url ? `${enhancedText} ${url}` : enhancedText
       
       if (isFrame && share) {
         await share({ text: shareText, url })
@@ -165,7 +229,10 @@ export function ShareButton({ text, url, className, variant = "outline", size = 
     } catch (err) {
       console.error("Share failed:", err)
       // Fallback to direct URL
-      const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`
+      const fallbackText = totalTransactions > 0 
+        ? `${text}\n\n🚀 Total Transactions: ${totalTransactions}`
+        : text
+      const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(fallbackText)}`
       openUrl(warpcastUrl)
     } finally {
       setIsSharing(false)

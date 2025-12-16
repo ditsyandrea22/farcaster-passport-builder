@@ -41,16 +41,38 @@ export function EnhancedWallet({
   } = useFrame()
   const { success, error } = useNotifications()
 
-  // Check wallet availability
+  // Enhanced wallet availability check
   useEffect(() => {
     const checkWalletAvailability = () => {
       if (typeof window !== 'undefined') {
         const farcaster = (window as any).farcaster
+        
         // Check for various wallet availability patterns in FarCaster SDK
-        const hasWallet = !!farcaster?.wallet || 
-                         !!farcaster?.sdk?.wallet ||
-                         !!farcaster?.sdk?.context?.wallet ||
-                         !!farcaster?.frameContext?.wallet
+        let hasWallet = false
+        
+        if (farcaster) {
+          // Direct wallet
+          if (farcaster.wallet && farcaster.wallet.address) {
+            hasWallet = true
+          }
+          // SDK wallet
+          else if (farcaster.sdk?.wallet && farcaster.sdk.wallet.address) {
+            hasWallet = true
+          }
+          // Frame context wallet
+          else if (farcaster.frameContext?.wallet && farcaster.frameContext.wallet.address) {
+            hasWallet = true
+          }
+          // SDK context wallet
+          else if (farcaster.sdk?.context?.wallet && farcaster.sdk.context.wallet.address) {
+            hasWallet = true
+          }
+          // SDK actions available (might have wallet access)
+          else if (farcaster.sdk?.actions) {
+            hasWallet = true
+          }
+        }
+        
         setWalletAvailable(hasWallet)
       }
     }
@@ -58,7 +80,7 @@ export function EnhancedWallet({
     checkWalletAvailability()
     
     // Check periodically for wallet availability
-    const interval = setInterval(checkWalletAvailability, 1000)
+    const interval = setInterval(checkWalletAvailability, 500)
     return () => clearInterval(interval)
   }, [])
 
