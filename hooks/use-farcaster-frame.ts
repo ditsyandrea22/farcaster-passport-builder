@@ -154,64 +154,6 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
   const [error, setError] = useState<string | null>(null)
   const [walletState, setWalletState] = useState<WalletConnectionState | null>(null)
   const detectionAttempts = useRef(0)
-  const maxAttempts = 15
-
-  // Initialize Frame SDK with immediate ready call
-  useImmediateSDKReady()
-  const isSDKReady = useFrameSDK()
-
-  // Subscribe to wallet events from enhanced manager
-  useEffect(() => {
-    const unsubscribeConnected = enhancedWalletManager.on('walletConnected', (state: WalletConnectionState) => {
-      console.log("🔗 Enhanced wallet connected:", state)
-      setWalletState(state)
-      // Convert to FrameWallet format for compatibility
-      if (state.isConnected && state.address) {
-        setWallet({
-          address: state.address,
-          chainId: state.chainId || "8453",
-          isConnected: state.isConnected,
-          connect: async () => {},
-          sendTransaction: async (tx) => {
-            const result = await enhancedWalletManager.sendTransaction(tx)
-            return result.hash
-          }
-        })
-      }
-    })
-
-    const unsubscribeDisconnected = enhancedWalletManager.on('walletDisconnected', () => {
-      console.log("🔌 Enhanced wallet disconnected")
-      setWalletState(null)
-      setWallet(null)
-    })
-
-    const unsubscribeError = enhancedWalletManager.on('walletError', (data: { error: SetStateAction<string | null> }) => {
-      console.error("❌ Enhanced wallet error:", data)
-      setError(data.error)
-    })
-
-    const unsubscribeBalance = enhancedWalletManager.on('balanceUpdated', (data: { balance: any }) => {
-      console.log("💰 Balance updated:", data)
-      setWalletState(prev => prev ? { ...prev, balance: data.balance, lastUpdated: Date.now() } : null)
-    })
-
-    return () => {
-      unsubscribeConnected()
-      unsubscribeDisconnected()
-      unsubscribeError()
-      unsubscribeBalance()
-    }
-  }, [])
-
-export function useFarcasterFrame(): UseFarcasterFrameReturn {
-  const [isFrame, setIsFrame] = useState(false)
-  const [frameContext, setFrameContext] = useState<FrameContext | null>(null)
-  const [wallet, setWallet] = useState<FrameWallet | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [walletState, setWalletState] = useState<WalletConnectionState | null>(null)
-  const detectionAttempts = useRef(0)
   const maxAttempts = 20
 
   // Initialize Frame SDK with immediate ready call
