@@ -61,19 +61,12 @@ export function WalletErrorHandler() {
         // Silently ignore
       }
 
-      // Check for CSP violations in console
-      const originalError = console.error
-      console.error = function(...args) {
-        const message = args.join(' ')
-        if (message.includes('Content Security Policy') || message.includes('CSP')) {
-          detectedConflicts.push({
-            type: 'csp-violation',
-            message: 'Content Security Policy blocking external connections',
-            details: 'External APIs are being blocked by CSP configuration',
-            timestamp: Date.now()
-          })
-        }
-        originalError.apply(console, args)
+      // Check for CSP violations in console using enhanced error handler
+      if (typeof window !== 'undefined') {
+        // Import error handler dynamically to avoid SSR issues
+        import('@/lib/error-handler').then(({ errorHandler }) => {
+          errorHandler.setNoiseReduction(true) // Enable noise reduction
+        })
       }
 
       // Check for origin mismatches

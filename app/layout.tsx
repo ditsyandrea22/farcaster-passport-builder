@@ -106,6 +106,22 @@ export default function RootLayout({
       <script src="/sdk-ready.js"></script>
       <body className={`font-sans antialiased`}>
         <ErrorBoundary>
+          {/* Initialize error handling early */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                // Initialize error handling
+                if (typeof window !== 'undefined') {
+                  import('/lib/error-handler.ts').then(({ errorHandler }) => {
+                    errorHandler.setNoiseReduction(true);
+                    console.log('🛡️ Enhanced error handling initialized');
+                  }).catch(err => {
+                    console.warn('Failed to initialize error handler:', err);
+                  });
+                }
+              `
+            }}
+          />
           <EnhancedAuthKitProvider>
             <FrameProvider>
               <ReownWalletProvider>

@@ -5,16 +5,30 @@ interface IconProps {
   color?: string;
 }
 
-export const Icon = ({ 
-  width = 24, 
-  height = 24, 
+export const Icon = ({
+  width = 24,
+  height = 24,
   className = "",
   color = "currentColor",
-  ...props 
+  ...props
 }: IconProps) => {
-  // Ensure width and height are valid SVG values
-  const validWidth = typeof width === 'number' ? width : parseInt(width) || 24;
-  const validHeight = typeof height === 'number' ? height : parseInt(height) || 24;
+  // Ensure width and height are valid SVG values (numeric only)
+  const normalizeSize = (value: number | string): number => {
+    if (typeof value === 'number') return value
+    if (typeof value === 'string') {
+      // Handle common size values
+      const sizeMap: Record<string, number> = {
+        'xs': 12, 'sm': 16, 'md': 24, 'lg': 32, 'xl': 48, '2xl': 64
+      }
+      if (sizeMap[value]) return sizeMap[value]
+      const parsed = parseInt(value, 10)
+      return isNaN(parsed) ? 24 : parsed
+    }
+    return 24
+  }
+  
+  const validWidth = normalizeSize(width)
+  const validHeight = normalizeSize(height)
   
   return (
     <svg
