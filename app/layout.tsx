@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { EnhancedAuthKitProvider } from "@/providers/auth-kit-provider"
 import { FrameProvider } from "@/providers/frame-provider"
+import { ReownWalletProvider } from "@/providers/reown-wallet-provider"
 import { FrameInitializer } from "@/components/frame-initializer"
 import { NotificationSystem } from "@/components/notification-system"
 import { ErrorBoundary } from "@/components/error-boundary"
@@ -108,11 +109,13 @@ export default function RootLayout({
         <ErrorBoundary>
           <EnhancedAuthKitProvider>
             <FrameProvider>
-              <MiniAppInitializer />
-              <FrameInitializer />
-              {children}
-              <NotificationSystem />
-              <Analytics />
+              <ReownWalletProvider>
+                <MiniAppInitializer />
+                <FrameInitializer />
+                {children}
+                <NotificationSystem />
+                <Analytics />
+              </ReownWalletProvider>
             </FrameProvider>
           </EnhancedAuthKitProvider>
         </ErrorBoundary>
