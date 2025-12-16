@@ -7,6 +7,7 @@ import { FrameProvider } from "@/providers/frame-provider"
 import { FrameInitializer } from "@/components/frame-initializer"
 import { NotificationSystem } from "@/components/notification-system"
 import { ErrorBoundary } from "@/components/error-boundary"
+import { MiniAppInitializer } from "@/components/miniapp-initializer"
 import { logConfigStatus } from "@/lib/env-config"
 
 export const metadata: Metadata = {
@@ -40,6 +41,17 @@ export const metadata: Metadata = {
     creator: "@lizlabs_eth"
   },
   other: {
+    "fc:miniapp": JSON.stringify({
+      version: "1",
+      imageUrl: "https://farcaster-passport-builder.vercel.app/icon.jpg",
+      button: {
+        title: "Build Passport",
+        action: {
+          type: "launch_miniapp",
+          url: "https://farcaster-passport-builder.vercel.app"
+        }
+      }
+    }),
     "fc:frame": "vNext",
     "fc:frame:image": "/api/frame/image",
     "fc:frame:button:1": "Check Reputation",
@@ -96,6 +108,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <EnhancedAuthKitProvider>
             <FrameProvider>
+              <MiniAppInitializer />
               <FrameInitializer />
               {children}
               <NotificationSystem />
