@@ -110,13 +110,27 @@ export default function RootLayout({
           <script
             dangerouslySetInnerHTML={{
               __html: `
-                // Initialize error handling
+                // Initialize unified protection system
                 if (typeof window !== 'undefined') {
-                  import('/lib/error-handler.ts').then(({ errorHandler }) => {
-                    errorHandler.setNoiseReduction(true);
-                    console.log('🛡️ Enhanced error handling initialized');
+                  import('/lib/unified-initializer.ts').then(async ({ unifiedInitializer }) => {
+                    try {
+                      await unifiedInitializer.initialize({
+                        enableWalletProtection: true,
+                        enableCrossOriginComm: true,
+                        enableErrorHandler: true,
+                        enableWalletManager: true,
+                        noiseReduction: true,
+                        autoRecovery: true
+                      });
+                      console.log('🛡️ Unified protection system initialized');
+                      
+                      // Set up global error handler reference for debugging
+                      window.unifiedInitializer = unifiedInitializer;
+                    } catch (err) {
+                      console.warn('Failed to initialize unified protection system:', err);
+                    }
                   }).catch(err => {
-                    console.warn('Failed to initialize error handler:', err);
+                    console.warn('Failed to load unified initializer:', err);
                   });
                 }
               `

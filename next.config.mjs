@@ -25,7 +25,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://farcaster.xyz https://client.farcaster.xyz https://warpcast.com https://client.warpcast.com https://wrpcd.net https://*.wrpcd.net https://privy.farcaster.xyz https://privy.warpcast.com https://auth.privy.io https://*.rpc.privy.systems https://cloudflareinsights.com https://explorer-api.walletconnect.com https://*.walletconnect.com https://*.rpc.tenderly.co https://base-mainnet.g.alchemy.com https://base.drpc.org https://api.opensea.io",
+              "connect-src 'self' https://farcaster.xyz https://client.farcaster.xyz https://warpcast.com https://client.warpcast.com https://wallet.farcaster.xyz https://privy.farcaster.xyz https://privy.warpcast.com https://auth.privy.io https://*.rpc.privy.systems https://cloudflareinsights.com https://explorer-api.walletconnect.com https://*.walletconnect.com https://*.rpc.tenderly.co https://base-mainnet.g.alchemy.com https://base.drpc.org https://api.opensea.io https://*.etherscan.io https://api.etherscan.io https://basescan.org https://api.basescan.org https://*.alchemy.com https://*.infura.io https://*.pokt.network https://*.cloudflare-eth.com",
               "frame-src https://farcaster.xyz https://client.farcaster.xyz https://wallet.farcaster.xyz",
               "frame-ancestors 'self' https://farcaster.xyz https://client.farcaster.xyz https://warpcast.com https://client.warpcast.com",
               "object-src 'none'",
