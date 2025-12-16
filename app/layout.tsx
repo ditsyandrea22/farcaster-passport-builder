@@ -3,12 +3,11 @@ import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { EnhancedAuthKitProvider } from "@/providers/auth-kit-provider"
-import { FrameProvider } from "@/providers/frame-provider"
+import { FrameProvider } from "@/providers/frame-provider-unified"
 import { ReownWalletProvider } from "@/providers/reown-wallet-provider"
-import { FrameInitializer } from "@/components/frame-initializer"
+import { SimplifiedMiniAppInitializer } from "@/components/simplified-miniapp-initializer"
 import { NotificationSystem } from "@/components/notification-system"
 import { ErrorBoundary } from "@/components/error-boundary"
-import { MiniAppInitializer } from "@/components/miniapp-initializer"
 import { logConfigStatus } from "@/lib/env-config"
 
 export const metadata: Metadata = {
@@ -110,8 +109,7 @@ export default function RootLayout({
           <EnhancedAuthKitProvider>
             <FrameProvider>
               <ReownWalletProvider>
-                <MiniAppInitializer />
-                <FrameInitializer />
+                <SimplifiedMiniAppInitializer />
                 {children}
                 <NotificationSystem />
                 <Analytics />
