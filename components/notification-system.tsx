@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useFrame } from "@/providers/frame-provider"
+import { useFrame } from "@/providers/frame-provider-unified"
 import { cn } from "@/lib/utils"
 
 interface Notification {

@@ -1,6 +1,7 @@
 /**
  * Simplified Frame Detection Hook
  * Uses the unified wallet manager for consistent, reliable detection
+ * Properly handles SSR (Server-Side Rendering)
  */
 
 "use client"
@@ -105,27 +106,29 @@ export function useSimplifiedFrame(): UseSimplifiedFrameReturn {
           console.log("✅ Frame environment detected")
           
           // Try to get frame context from SDK
-          const sdk = (window as any).farcaster?.sdk || 
-                     (window as any).__FARCASTER__?.sdk ||
-                     (window as any).__MINIAPP__?.sdk
-          
-          if (sdk?.context) {
-            const context = sdk.context
-            if (context && typeof context === 'object') {
-              console.log("📋 Frame context found:", context)
-              
-              const builtContext: FrameContext = {
-                user: context.user ? {
-                  fid: context.user.fid,
-                  username: context.user.username || '',
-                  displayName: context.user.displayName || '',
-                  pfpUrl: context.user.pfpUrl
-                } : undefined,
-                client: context.client,
-                wallet: context.wallet
+          if (typeof window !== 'undefined') {
+            const sdk = (window as any).farcaster?.sdk || 
+                       (window as any).__FARCASTER__?.sdk ||
+                       (window as any).__MINIAPP__?.sdk
+            
+            if (sdk?.context) {
+              const context = sdk.context
+              if (context && typeof context === 'object') {
+                console.log("📋 Frame context found:", context)
+                
+                const builtContext: FrameContext = {
+                  user: context.user ? {
+                    fid: context.user.fid,
+                    username: context.user.username || '',
+                    displayName: context.user.displayName || '',
+                    pfpUrl: context.user.pfpUrl
+                  } : undefined,
+                  client: context.client,
+                  wallet: context.wallet
+                }
+                
+                setFrameContext(builtContext)
               }
-              
-              setFrameContext(builtContext)
             }
           }
         } else {
@@ -140,7 +143,12 @@ export function useSimplifiedFrame(): UseSimplifiedFrameReturn {
       }
     }
 
-    initialize()
+    // Only initialize on client side
+    if (typeof window !== 'undefined') {
+      initialize()
+    } else {
+      setIsLoading(false)
+    }
   }, [])
 
   const retryDetection = async () => {

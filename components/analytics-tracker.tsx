@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useFrame } from "@/providers/frame-provider"
+import { useFrame } from "@/providers/frame-provider-unified"
 
 interface AnalyticsEvent {
   name: string
@@ -26,7 +26,7 @@ export function AnalyticsTracker({
   useEffect(() => {
     if (trackPageViews) {
       trackEvent("page_view", {
-        path: window.location.pathname,
+        path: typeof window !== 'undefined' ? window.location.pathname : '',
         isFrame,
         userFid: user?.fid,
         timestamp: Date.now()
@@ -36,7 +36,7 @@ export function AnalyticsTracker({
 
   // Track clicks
   useEffect(() => {
-    if (!trackClicks) return
+    if (!trackClicks || typeof window === 'undefined') return
 
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement
@@ -66,8 +66,8 @@ export function AnalyticsTracker({
         isFrame,
         userFid: user?.fid,
         timestamp: Date.now(),
-        url: window.location.href,
-        userAgent: navigator.userAgent
+        url: typeof window !== 'undefined' ? window.location.href : '',
+        userAgent: typeof window !== 'undefined' ? navigator.userAgent : ''
       }
     }
 
@@ -115,7 +115,7 @@ export function useAnalytics() {
         isFrame,
         userFid: user?.fid,
         timestamp: Date.now(),
-        url: window.location.href
+        url: typeof window !== 'undefined' ? window.location.href : ''
       }
     }
 

@@ -1,11 +1,12 @@
 /**
  * Simplified Frame Provider
  * Uses unified wallet manager for consistent, reliable frame and wallet detection
+ * Properly handles SSR (Server-Side Rendering)
  */
 
 "use client"
 
-import React, { createContext, useContext, ReactNode } from "react"
+import React, { createContext, useContext, ReactNode, useState, useEffect } from "react"
 import { useSimplifiedFrame } from "@/hooks/use-simplified-frame"
 import { unifiedWalletManager, type WalletConnectionState, type TransactionRequest, type TransactionResult } from "@/lib/unified-wallet-manager"
 
@@ -100,17 +101,30 @@ export function FrameProvider({ children }: FrameProviderProps) {
   const walletAddress = wallet?.address || null
   const isWalletConnected = wallet?.isConnected || false
 
-  // Get SDK and actions from window
-  const sdk = (window as any).farcaster?.sdk || 
-              (window as any).__FARCASTER__?.sdk ||
-              (window as any).__MINIAPP__?.sdk || null
-  
-  const actions = sdk?.actions || null
-  const notifications = (window as any).farcaster?.notifications || null
-  const share = (window as any).farcaster?.share || null
+  // State for SDK features (to prevent SSR issues)
+  const [sdk, setSDK] = useState<any>(null)
+  const [actions, setActions] = useState<any>(null)
+  const [notifications, setNotifications] = useState<any>(null)
+  const [share, setShare] = useState<any>(null)
+
+  // Initialize client side only SDK features
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const farcasterSDK = (window as any).farcaster?.sdk || 
+                           (window as any).__FARCASTER__?.sdk ||
+                           (window as any).__MINIAPP__?.sdk || null
+      
+      setSDK(farcasterSDK)
+      setActions(farcasterSDK?.actions || null)
+      setNotifications((window as any).farcaster?.notifications || null)
+      setShare((window as any).farcaster?.share || null)
+    }
+  }, [])
 
   // Enhanced open URL function
   const openUrl = (url: string) => {
+    if (typeof window === 'undefined') return
+    
     if (share?.openUrl) {
       share.openUrl(url)
     } else {
@@ -124,6 +138,8 @@ export function FrameProvider({ children }: FrameProviderProps) {
     body?: string
     icon?: string
   }) => {
+    if (typeof window === 'undefined') return
+    
     try {
       if (notifications?.create) {
         await notifications.create(notification)
@@ -151,8 +167,8 @@ export function FrameProvider({ children }: FrameProviderProps) {
   }
 
   // Request notification permission
-  React.useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission()
     }
   }, [])

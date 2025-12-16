@@ -3,6 +3,7 @@
  * 
  * Single source of truth for wallet detection and management
  * Consolidates multiple detection systems into one reliable implementation
+ * Properly handles SSR (Server-Side Rendering) to prevent build errors
  */
 
 export interface WalletConnectionState {
@@ -69,6 +70,11 @@ export class UnifiedWalletManager {
       return
     }
 
+    // Prevent initialization during SSR
+    if (typeof window === 'undefined') {
+      return
+    }
+
     this.isInitializing = true
     console.log("🚀 Initializing Unified Wallet Manager...")
 
@@ -91,7 +97,7 @@ export class UnifiedWalletManager {
 
   // Call sdk.actions.ready() once and only once
   private async callSDKReady(): Promise<void> {
-    if (this.readyCalled) {
+    if (this.readyCalled || typeof window === 'undefined') {
       return
     }
 
@@ -112,6 +118,8 @@ export class UnifiedWalletManager {
 
   // Get SDK from any available location
   private getSDK(): any {
+    if (typeof window === 'undefined') return null
+    
     return (window as any).farcaster?.sdk || 
            (window as any).__FARCASTER__?.sdk ||
            (window as any).__MINIAPP__?.sdk ||
@@ -120,6 +128,8 @@ export class UnifiedWalletManager {
 
   // Get Farcaster object from any available location
   private getFarcaster(): any {
+    if (typeof window === 'undefined') return null
+    
     return (window as any).farcaster || 
            (window as any).__FARCASTER__ ||
            (window as any).__MINIAPP__ ||
@@ -128,7 +138,7 @@ export class UnifiedWalletManager {
 
   // Single, reliable wallet detection method
   async detectWallet(): Promise<WalletConnectionState> {
-    if (this.detectionStarted) {
+    if (this.detectionStarted || typeof window === 'undefined') {
       return this.currentState
     }
 
@@ -251,6 +261,10 @@ export class UnifiedWalletManager {
       throw new Error("Wallet not connected")
     }
 
+    if (typeof window === 'undefined') {
+      throw new Error("Transactions can only be sent from client-side")
+    }
+
     const farcaster = this.getFarcaster()
     const sdk = this.getSDK()
 
@@ -289,6 +303,10 @@ export class UnifiedWalletManager {
 
   // Request wallet connection
   async requestConnection(): Promise<void> {
+    if (typeof window === 'undefined') {
+      throw new Error("Connection can only be requested from client-side")
+    }
+    
     const sdk = this.getSDK()
     
     const methods = [
@@ -317,7 +335,7 @@ export class UnifiedWalletManager {
 
   // Load balance for current wallet
   async loadBalance(): Promise<void> {
-    if (!this.currentState.address) {
+    if (!this.currentState.address || typeof window === 'undefined') {
       return
     }
 
@@ -414,11 +432,14 @@ export class UnifiedWalletManager {
 
   // Check if we're in a frame environment
   isInFrame(): boolean {
+    if (typeof window === 'undefined') return false
     return !!this.getFarcaster()
   }
 
   // Retry detection
   async retryDetection(): Promise<void> {
+    if (typeof window === 'undefined') return
+    
     console.log("🔄 Retrying wallet detection...")
     this.detectionStarted = false
     await this.detectWallet()

@@ -1,6 +1,7 @@
 /**
  * Simplified Mini App Initializer
  * Ensures sdk.actions.ready() is called exactly once without conflicts
+ * Properly handles SSR (Server-Side Rendering)
  */
 
 "use client"
@@ -16,6 +17,11 @@ import { unifiedWalletManager } from "@/lib/unified-wallet-manager"
  */
 export function SimplifiedMiniAppInitializer() {
   useEffect(() => {
+    // Only initialize on client side to prevent SSR issues
+    if (typeof window === 'undefined') {
+      return
+    }
+
     // The unified wallet manager already calls ready() during initialization
     // This component serves as a backup and provides a React-level initialization point
     
