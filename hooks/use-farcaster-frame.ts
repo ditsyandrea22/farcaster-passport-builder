@@ -48,29 +48,37 @@ function useFrameSDK() {
     const initializeSDK = async () => {
       try {
         if (typeof window !== 'undefined' && (window as any).farcaster?.sdk) {
-          // Wait for the SDK to be fully loaded
-          await new Promise((resolve, reject) => {
-            const checkSDK = () => {
-              if ((window as any).farcaster?.sdk?.actions?.ready) {
-                resolve(true)
-              } else {
-                setTimeout(checkSDK, 100)
+          // Simple check for SDK readiness with timeout
+          let attempts = 0
+          const maxAttempts = 50 // 5 seconds max
+          
+          const checkSDK = async () => {
+            attempts++
+            if ((window as any).farcaster?.sdk?.actions?.ready) {
+              try {
+                // Call sdk.actions.ready() to indicate the app is ready
+                await (window as any).farcaster.sdk.actions.ready()
+                setIsSDKReady(true)
+                console.log("✅ Frame SDK initialized successfully")
+                return true
+              } catch (readyErr) {
+                console.warn("⚠️ Error calling sdk.actions.ready():", readyErr)
+                return false
               }
+            } else if (attempts < maxAttempts) {
+              // Wait 100ms before next attempt
+              await new Promise(resolve => setTimeout(resolve, 100))
+              return checkSDK()
+            } else {
+              console.warn("⚠️ SDK not ready after maximum attempts")
+              return false
             }
-            // Timeout after 10 seconds
-            setTimeout(() => reject(new Error("SDK initialization timeout")), 10000)
-            checkSDK()
-          })
-
-          // Call sdk.actions.ready() to indicate the app is ready
-          if ((window as any).farcaster?.sdk?.actions?.ready) {
-            await (window as any).farcaster.sdk.actions.ready()
-            setIsSDKReady(true)
-            console.log("✅ Frame SDK initialized successfully")
           }
+          
+          await checkSDK()
         }
       } catch (err) {
-        console.warn("⚠️ SDK initialization warning:", err)
+        console.warn("⚠️ SDK initialization error:", err)
         // Don't throw error, just continue without SDK
       }
     }
@@ -82,6 +90,32 @@ function useFrameSDK() {
   return isSDKReady
 }
 
+// Immediately call sdk.actions.ready() when SDK is detected
+function useImmediateSDKReady() {
+  useEffect(() => {
+    const initializeImmediateSDK = async () => {
+      if (typeof window !== 'undefined' && (window as any).farcaster?.sdk?.actions?.ready) {
+        try {
+          // Call immediately without waiting
+          await (window as any).farcaster.sdk.actions.ready()
+          console.log("🚀 Frame SDK ready called immediately")
+        } catch (err) {
+          console.warn("⚠️ Immediate SDK ready call failed:", err)
+        }
+      }
+    }
+
+    // Try immediately and also after a short delay to catch late-loading SDKs
+    initializeImmediateSDK()
+    
+    const timeoutId = setTimeout(() => {
+      initializeImmediateSDK()
+    }, 500)
+    
+    return () => clearTimeout(timeoutId)
+  }, [])
+}
+
 export function useFarcasterFrame(): UseFarcasterFrameReturn {
   const [isFrame, setIsFrame] = useState(false)
   const [frameContext, setFrameContext] = useState<FrameContext | null>(null)
@@ -91,7 +125,8 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
   const detectionAttempts = useRef(0)
   const maxAttempts = 10
 
-  // Initialize Frame SDK
+  // Initialize Frame SDK with immediate ready call
+  useImmediateSDKReady()
   const isSDKReady = useFrameSDK()
 
   const detectFrame = async () => {
