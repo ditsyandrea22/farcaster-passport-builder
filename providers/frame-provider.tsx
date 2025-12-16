@@ -104,23 +104,13 @@ export function FrameProvider({ children }: FrameProviderProps) {
   useEffect(() => {
     const initializeSDK = async () => {
       try {
-        console.log("🚀 Initializing FarCaster SDK with conflict protection...")
-        
         if (typeof window !== 'undefined' && (window as any).farcaster) {
           // Import conflict manager to prevent external wallet conflicts
           const { walletConflictManager } = await import('@/lib/wallet-conflict-manager')
           
           const farcaster = (window as any).farcaster
           
-          console.log("✅ FarCaster SDK detected with conflict protection:", {
-            hasFrameContext: !!farcaster.frameContext,
-            hasWallet: !!farcaster.wallet,
-            hasSDK: !!farcaster.sdk,
-            hasMiniApp: !!farcaster.miniApp,
-            conflictProtection: walletConflictManager.isFrameEnvironment()
-          })
-          
-          // Initialize SDK
+          // Initialize SDK with better error handling
           if (farcaster.sdk) {
             setSDK(farcaster.sdk)
             setActions(farcaster.sdk.actions)
@@ -135,19 +125,20 @@ export function FrameProvider({ children }: FrameProviderProps) {
               setShare(farcaster.share)
             }
             
-            // Set up SDK ready handler
+            // Set up SDK ready handler with error boundary
             if (farcaster.sdk.actions?.ready) {
               try {
                 farcaster.sdk.actions.ready()
-                console.log("✅ SDK ready handler called")
               } catch (readyError) {
-                console.warn("SDK ready call failed:", readyError)
+                // Silently handle SDK ready errors
+                console.debug("SDK ready call failed:", readyError)
               }
             }
           }
         }
       } catch (error) {
-        console.error("❌ SDK initialization failed:", error)
+        // Silently handle initialization errors to prevent console spam
+        console.debug("SDK initialization error:", error)
       }
     }
 

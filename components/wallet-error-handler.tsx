@@ -21,32 +21,41 @@ export function WalletErrorHandler() {
     const detectConflicts = () => {
       const detectedConflicts: WalletConflictError[] = []
 
-      // Check for window.ethereum conflicts
+      // Check for window.ethereum conflicts - only report if it's actually causing issues
       try {
         if (typeof window !== 'undefined') {
           const ethereumDescriptor = Object.getOwnPropertyDescriptor(window, 'ethereum')
           if (ethereumDescriptor && !ethereumDescriptor.configurable) {
-            detectedConflicts.push({
-              type: 'ethereum-conflict',
-              message: 'External wallet provider detected',
-              details: 'window.ethereum is read-only, preventing proper FarCaster wallet integration',
-              timestamp: Date.now()
-            })
+            // Only report if we don't have our own protection active
+            const hasOurProtection = ethereumDescriptor.get && ethereumDescriptor.get.toString().includes('safeEthereum')
+            if (!hasOurProtection) {
+              detectedConflicts.push({
+                type: 'ethereum-conflict',
+                message: 'External wallet provider detected',
+                details: 'window.ethereum is read-only, preventing proper FarCaster wallet integration',
+                timestamp: Date.now()
+              })
+            }
           }
         }
       } catch (error) {
         // Silently ignore
       }
 
-      // Check for Zerion conflicts
+      // Check for Zerion conflicts - only report if it's actually problematic
       try {
         if (typeof window !== 'undefined' && (window as any).isZerion) {
-          detectedConflicts.push({
-            type: 'zerion-conflict',
-            message: 'Zerion wallet injection detected',
-            details: 'External wallet is conflicting with FarCaster wallet',
-            timestamp: Date.now()
-          })
+          // Check if our protection is already handling this
+          const hasProtection = typeof (window as any).ethereum !== 'undefined' &&
+                               Object.getOwnPropertyDescriptor(window, 'ethereum')?.configurable === false
+          if (!hasProtection) {
+            detectedConflicts.push({
+              type: 'zerion-conflict',
+              message: 'Zerion wallet injection detected',
+              details: 'External wallet is conflicting with FarCaster wallet',
+              timestamp: Date.now()
+            })
+          }
         }
       } catch (error) {
         // Silently ignore

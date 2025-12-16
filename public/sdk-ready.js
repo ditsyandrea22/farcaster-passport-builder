@@ -22,14 +22,14 @@
             const width = element.getAttribute('width');
             const height = element.getAttribute('height');
             
-            if (width === 'small' || width === 'large' || width === 'medium') {
-              const numericWidth = getNumericSize(width);
+            if (width === 'small' || width === 'large' || width === 'medium' || isNaN(parseInt(width))) {
+              const numericWidth = getNumericSize(width) || 24;
               element.setAttribute('width', numericWidth.toString());
               console.log('🧹 Fixed SVG width:', width, '→', numericWidth);
             }
             
-            if (height === 'small' || height === 'large' || height === 'medium') {
-              const numericHeight = getNumericSize(height);
+            if (height === 'small' || height === 'large' || height === 'medium' || isNaN(parseInt(height))) {
+              const numericHeight = getNumericSize(height) || 24;
               element.setAttribute('height', numericHeight.toString());
               console.log('🧹 Fixed SVG height:', height, '→', numericHeight);
             }
@@ -67,7 +67,10 @@
         var originalDefineProperty = Object.defineProperty;
         Object.defineProperty = function(obj, prop, descriptor) {
           if (obj === window && (prop === 'ethereum' || prop === 'isZerion' || String(prop).indexOf('eth_') === 0)) {
-            console.warn('🛡️ Blocked external wallet property injection:', prop);
+            // Only log occasionally to reduce noise
+            if (Math.random() < 0.1) { // 10% of the time
+              console.debug('🛡️ Blocked external wallet property injection:', prop);
+            }
             return obj; // Silently block the redefinition
           }
           return originalDefineProperty.call(this, obj, prop, descriptor);

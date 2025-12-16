@@ -139,7 +139,10 @@ export class WalletConflictManager {
     Object.defineProperty = function(obj: any, prop: PropertyKey, descriptor: PropertyDescriptor) {
       // Allow our own properties to be defined
       if (obj === window && (prop === 'ethereum' || prop === 'isZerion' || String(prop).startsWith('eth_'))) {
-        console.warn(`🛡️ Blocked external wallet property injection: ${String(prop)}`)
+        // Only log occasionally to reduce noise
+        if (Math.random() < 0.1) { // 10% of the time
+          console.debug(`🛡️ Blocked external wallet property injection: ${String(prop)}`)
+        }
         return obj // Silently block the redefinition
       }
       
@@ -157,10 +160,13 @@ export class WalletConflictManager {
               // Check for suspicious wallet injection scripts
               if (element.tagName === 'SCRIPT' && element.textContent) {
                 const content = element.textContent
-                if (content.includes('window.ethereum') || 
-                    content.includes('isZerion') || 
+                if (content.includes('window.ethereum') ||
+                    content.includes('isZerion') ||
                     content.includes('requestProvider')) {
-                  console.warn('🛡️ Removing suspicious wallet injection script')
+                  // Only log occasionally to reduce noise
+                  if (Math.random() < 0.05) { // 5% of the time
+                    console.debug('🛡️ Removed suspicious wallet injection script')
+                  }
                   element.parentNode?.removeChild(element)
                 }
               }
@@ -189,7 +195,10 @@ export class WalletConflictManager {
         ]
         
         if (!allowedOrigins.includes(event.origin)) {
-          console.warn(`🛡️ Blocking message from unauthorized origin: ${event.origin}`)
+          // Only log occasionally to reduce noise
+          if (Math.random() < 0.02) { // 2% of the time
+            console.debug(`🛡️ Blocking message from unauthorized origin: ${event.origin}`)
+          }
           return
         }
       }
