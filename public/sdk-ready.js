@@ -87,8 +87,23 @@
   function callSDKReady() {
     try {
       if (window.farcaster && window.farcaster.sdk && window.farcaster.sdk.actions && window.farcaster.sdk.actions.ready) {
-        console.log("🚀 Calling sdk.actions.ready() with protection");
-        window.farcaster.sdk.actions.ready();
+        console.log("🚀 Calling sdk.actions.ready()");
+        var result = window.farcaster.sdk.actions.ready();
+        
+        // Handle both sync and async ready calls
+        if (result && typeof result.then === 'function') {
+          result
+            .then(function() {
+              console.log("✅ sdk.actions.ready() completed successfully");
+              window.__miniapp_ready__ = true;
+            })
+            .catch(function(err) {
+              console.warn("⚠️ sdk.actions.ready() rejected:", err);
+            });
+        } else {
+          console.log("✅ sdk.actions.ready() called (sync)");
+          window.__miniapp_ready__ = true;
+        }
         return true;
       }
     } catch (err) {
