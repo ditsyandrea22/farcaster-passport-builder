@@ -1,9 +1,19 @@
 "use client"
 
-import { PassportGenerator } from "@/components/passport-generator"
+import { EnhancedPassportGenerator } from "@/components/enhanced-passport-generator"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { AnalyticsTracker } from "@/components/analytics-tracker"
+import { useAnalytics } from "@/components/analytics-tracker"
+import { useEffect } from "react"
 
 export default function Home() {
+  const { trackFrameView } = useAnalytics()
+
+  // Track frame view when component mounts
+  useEffect(() => {
+    trackFrameView()
+  }, [trackFrameView])
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-violet-100 via-fuchsia-100 to-cyan-100 dark:from-gray-950 dark:via-purple-950 dark:to-indigo-950">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -27,7 +37,7 @@ export default function Home() {
             </p>
           </div>
 
-          <PassportGenerator />
+          <EnhancedPassportGenerator />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 animate-fade-in-up">
             <div className="group p-6 bg-white/80 dark:bg-gray-900/80 rounded-xl backdrop-blur-md border border-purple-200/50 dark:border-purple-800/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -107,6 +117,7 @@ export default function Home() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                        data-analytics='{"name": "about_section_click", "properties": {"section": "profile_link", "platform": "farcaster"}}'
                       >
                         <span>🌟</span>
                         <span className="font-medium">View on Farcaster</span>
@@ -119,6 +130,13 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Analytics Tracker */}
+      <AnalyticsTracker 
+        trackPageViews={true}
+        trackClicks={true}
+        events={["homepage_view"]}
+      />
     </main>
   )
 }

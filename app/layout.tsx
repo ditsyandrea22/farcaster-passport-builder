@@ -3,22 +3,55 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
+import { FrameProvider } from "@/providers/frame-provider"
 import { FrameInitializer } from "@/components/frame-initializer"
 import { DebugFrame } from "@/components/debug-frame"
+import { NotificationSystem } from "@/components/notification-system"
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration"
+import { ErrorBoundary } from "@/components/error-boundary"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Farcaster Reputation Passport",
-  description: "Generate your on-chain reputation passport powered by Farcaster + Base",
+  description: "Generate your on-chain reputation passport powered by Farcaster + Base. Build and showcase your decentralized reputation identity.",
   generator: "Farcaster Passport Builder",
+  keywords: ["farcaster", "reputation", "passport", "blockchain", "base", "nft", "identity"],
+  authors: [{ name: "lizlabs.eth" }],
+  creator: "lizlabs.eth",
+  publisher: "Farcaster Passport Builder",
+  openGraph: {
+    title: "Farcaster Reputation Passport",
+    description: "Generate your on-chain reputation passport powered by Farcaster + Base",
+    type: "website",
+    url: "https://farcaster-passport-builder.vercel.app",
+    siteName: "Farcaster Reputation Passport",
+    images: [
+      {
+        url: "/icon.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Farcaster Reputation Passport",
+      }
+    ]
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Farcaster Reputation Passport",
+    description: "Generate your on-chain reputation passport powered by Farcaster + Base",
+    images: ["/icon.jpg"],
+    creator: "@lizlabs_eth"
+  },
   other: {
     "fc:frame": "vNext",
     "fc:frame:image": "/api/frame/image",
     "fc:frame:button:1": "Check Reputation",
     "fc:frame:button:1:action": "link",
     "fc:frame:button:1:target": "/splash.jpg",
+    "fc:frame:button:2": "Mint Passport",
+    "fc:frame:button:2:action": "post",
+    "fc:frame:button:2:target": "/api/frame/mint",
   },
   icons: {
     icon: [
@@ -32,9 +65,15 @@ export const metadata: Metadata = {
         sizes: "192x192",
         type: "image/png",
       },
+      {
+        url: "/icon.jpg",
+        sizes: "512x512",
+        type: "image/png",
+      },
     ],
     apple: "/apple-icon.jpg",
   },
+  manifest: "/manifest.json",
 }
 
 export default function RootLayout({
@@ -45,10 +84,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        <FrameInitializer />
-        {children}
-        <DebugFrame />
-        <Analytics />
+        <ErrorBoundary>
+          <FrameProvider>
+            <ServiceWorkerRegistration />
+            <FrameInitializer />
+            {children}
+            <NotificationSystem />
+            <DebugFrame />
+            <Analytics />
+          </FrameProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )
