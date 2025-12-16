@@ -54,31 +54,44 @@ function useFrameSDK() {
   useEffect(() => {
     const initializeSDK = async () => {
       try {
-        if (typeof window !== 'undefined' && (window as any).farcaster?.sdk) {
-          // Simple check for SDK readiness with timeout
+        if (typeof window !== 'undefined') {
+          // Look for SDK in multiple locations
+          const farcaster = (window as any).farcaster || 
+                           (window as any).__FARCASTER__ ||
+                           (window as any).__MINIAPP__
+          
+          if (!farcaster?.sdk) {
+            console.log("ℹ️ SDK not found, waiting for injection...")
+            return
+          }
+          
+          // Check if ready() method exists
+          if (!farcaster.sdk.actions?.ready) {
+            console.log("ℹ️ SDK ready() not found")
+            return
+          }
+
+          // Try calling ready() with timeout
           let attempts = 0
-          const maxAttempts = 50 // 5 seconds max
+          const maxAttempts = 30 // 3 seconds max
           
           const checkSDK = async () => {
             attempts++
-            if ((window as any).farcaster?.sdk?.actions?.ready) {
-              try {
-                // Call sdk.actions.ready() to indicate the app is ready
-                await (window as any).farcaster.sdk.actions.ready()
-                setIsSDKReady(true)
-                console.log("✅ Frame SDK initialized successfully")
-                return true
-              } catch (readyErr) {
-                console.warn("⚠️ Error calling sdk.actions.ready():", readyErr)
+            try {
+              // Call sdk.actions.ready() to indicate the app is ready
+              const result = await farcaster.sdk.actions.ready()
+              setIsSDKReady(true)
+              console.log("✅ Frame SDK ready() called successfully")
+              return true
+            } catch (readyErr) {
+              if (attempts < maxAttempts) {
+                // Retry on error
+                await new Promise(resolve => setTimeout(resolve, 100))
+                return checkSDK()
+              } else {
+                console.warn("⚠️ SDK ready() failed after max attempts:", readyErr)
                 return false
               }
-            } else if (attempts < maxAttempts) {
-              // Wait 100ms before next attempt
-              await new Promise(resolve => setTimeout(resolve, 100))
-              return checkSDK()
-            } else {
-              console.warn("⚠️ SDK not ready after maximum attempts")
-              return false
             }
           }
           
@@ -86,7 +99,6 @@ function useFrameSDK() {
         }
       } catch (err) {
         console.warn("⚠️ SDK initialization error:", err)
-        // Don't throw error, just continue without SDK
       }
     }
 
@@ -97,29 +109,40 @@ function useFrameSDK() {
   return isSDKReady
 }
 
-// Immediately call sdk.actions.ready() when SDK is detected
+// Immediately call sdk.actions.ready() when SDK is detected (for Mini App compatibility)
 function useImmediateSDKReady() {
   useEffect(() => {
     const initializeImmediateSDK = async () => {
-      if (typeof window !== 'undefined' && (window as any).farcaster?.sdk?.actions?.ready) {
-        try {
-          // Call immediately without waiting
-          await (window as any).farcaster.sdk.actions.ready()
-          console.log("🚀 Frame SDK ready called immediately")
-        } catch (err) {
-          console.warn("⚠️ Immediate SDK ready call failed:", err)
+      if (typeof window !== 'undefined') {
+        // Look in multiple locations
+        const farcaster = (window as any).farcaster || 
+                         (window as any).__FARCASTER__ ||
+                         (window as any).__MINIAPP__
+        
+        if (farcaster?.sdk?.actions?.ready) {
+          try {
+            console.log("🚀 Calling SDK ready() immediately for Mini App")
+            await farcaster.sdk.actions.ready()
+            console.log("✅ SDK ready() called immediately")
+          } catch (err) {
+            console.warn("⚠️ Immediate SDK ready() call error:", err)
+          }
         }
       }
     }
 
-    // Try immediately and also after a short delay to catch late-loading SDKs
+    // Try immediately and also after short delays to catch late-loading SDKs
     initializeImmediateSDK()
     
-    const timeoutId = setTimeout(() => {
-      initializeImmediateSDK()
-    }, 500)
+    const timeouts = [
+      setTimeout(initializeImmediateSDK, 100),
+      setTimeout(initializeImmediateSDK, 300),
+      setTimeout(initializeImmediateSDK, 500)
+    ]
     
-    return () => clearTimeout(timeoutId)
+    return () => {
+      timeouts.forEach(t => clearTimeout(t))
+    }
   }, [])
 }
 
@@ -187,34 +210,61 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
       setError(null)
       detectionAttempts.current++
 
-      // Check if we're in a Farcaster Frame environment
+      // Check if we're in a Farcaster Frame/Mini App environment
       if (typeof window !== 'undefined') {
-        const farcaster = (window as any).farcaster
+        // Try multiple locations where SDK might be injected
+        const farcaster = (window as any).farcaster || 
+                         (window as any).__FARCASTER__ ||
+                         (window as any).__MINIAPP__
         
-        console.log(`🔍 Simplified frame detection attempt ${detectionAttempts.current}:`, {
+        console.log(`🔍 Frame detection attempt ${detectionAttempts.current}:`, {
           hasFarcaster: !!farcaster,
+          hasSDK: !!(farcaster?.sdk),
+          hasFrameContext: !!(farcaster?.frameContext),
+          hasContext: !!(farcaster?.sdk?.context),
           timestamp: Date.now()
         })
 
-        // Quick detection - just check for Farcaster object
-        if (farcaster) {
+        // Detection improved: check for SDK, not just Farcaster object
+        if (farcaster && (farcaster.sdk || farcaster.frameContext)) {
           setIsFrame(true)
+          console.log("✅ Frame/Mini App detected")
           
-          // Get frame context if available
-          if (farcaster.frameContext) {
-            setFrameContext(farcaster.frameContext)
+          // Get frame context from multiple possible locations
+          const context = farcaster.frameContext || farcaster.sdk?.context || null
+          if (context) {
+            console.log("📋 Frame context found:", {
+              user: !!context.user,
+              wallet: !!context.wallet,
+              client: !!context.client
+            })
+            setFrameContext(context)
           }
           
-          // Use simplified wallet detection
-          const currentState = await enhancedWalletManager.detectWallet()
-          setWalletState(currentState)
+          // Detect wallet - try SDK wallet first (most reliable in Mini App)
+          let detectedWallet = null
           
-          if (currentState.isConnected && currentState.address) {
-            // Convert to FrameWallet format for compatibility
+          // Priority 1: Direct SDK wallet
+          if (farcaster.sdk?.wallet?.address) {
+            detectedWallet = farcaster.sdk.wallet
+            console.log("💰 Wallet found at: sdk.wallet")
+          }
+          // Priority 2: SDK context wallet
+          else if (farcaster.sdk?.context?.wallet?.address) {
+            detectedWallet = farcaster.sdk.context.wallet
+            console.log("💰 Wallet found at: sdk.context.wallet")
+          }
+          // Priority 3: Frame context wallet
+          else if (context?.wallet?.address) {
+            detectedWallet = context.wallet
+            console.log("💰 Wallet found at: frameContext.wallet")
+          }
+          
+          if (detectedWallet && detectedWallet.address) {
             setWallet({
-              address: currentState.address,
-              chainId: currentState.chainId || "8453",
-              isConnected: currentState.isConnected,
+              address: detectedWallet.address,
+              chainId: detectedWallet.chainId || "8453",
+              isConnected: true,
               connect: async () => {},
               sendTransaction: async (tx) => {
                 try {
@@ -226,10 +276,26 @@ export function useFarcasterFrame(): UseFarcasterFrameReturn {
                 }
               }
             })
+            
+            setWalletState({
+              isConnected: true,
+              address: detectedWallet.address,
+              chainId: detectedWallet.chainId || "8453",
+              balance: null,
+              networkName: "Base",
+              lastUpdated: Date.now()
+            })
+          } else {
+            console.log("⚠️ No wallet address found in frame context")
           }
           
+        } else if (detectionAttempts.current < maxAttempts) {
+          // SDK not ready yet, retry after a delay
+          console.log(`⏳ Frame SDK not ready yet, attempt ${detectionAttempts.current}/${maxAttempts}`)
+          await new Promise(resolve => setTimeout(resolve, 300))
+          return detectFrame() // Recursive retry
         } else {
-          // Not in Frame context
+          // Max attempts reached and no Frame detected
           setIsFrame(false)
           console.log("🌐 Not in Frame context, running as standalone web app")
         }
