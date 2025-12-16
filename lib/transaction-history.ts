@@ -1,5 +1,5 @@
-// Simple transaction history storage for demo purposes
-// In production, this would use a proper database
+// Enhanced transaction history with localStorage fallback
+// In production, this should be replaced with a proper database
 
 export interface TransactionRecord {
   fid: number
@@ -11,19 +11,48 @@ export interface TransactionRecord {
 }
 
 class TransactionHistory {
-  private transactions: Map<string, TransactionRecord[]> = new Map()
+  private storageKey = 'farcaster_passport_transactions'
+
+  private getStorageData(): Record<string, TransactionRecord[]> {
+    if (typeof window === 'undefined') return {}
+    
+    try {
+      const data = localStorage.getItem(this.storageKey)
+      return data ? JSON.parse(data) : {}
+    } catch (error) {
+      console.warn('Failed to read transaction history from localStorage')
+      return {}
+    }
+  }
+
+  private saveStorageData(data: Record<string, TransactionRecord[]>): void {
+    if (typeof window === 'undefined') return
+    
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(data))
+    } catch (error) {
+      console.warn('Failed to save transaction history to localStorage')
+    }
+  }
 
   addTransaction(record: TransactionRecord) {
+    if (typeof window === 'undefined') return // Skip on server side
+    
+    const data = this.getStorageData()
     const key = record.fid.toString()
-    if (!this.transactions.has(key)) {
-      this.transactions.set(key, [])
+    
+    if (!data[key]) {
+      data[key] = []
     }
-    this.transactions.get(key)!.push(record)
+    
+    data[key].push(record)
+    this.saveStorageData(data)
   }
 
   getTransactions(fid: number): TransactionRecord[] {
+    const data = this.getStorageData()
     const key = fid.toString()
-    return this.transactions.get(key) || []
+    return data[key] || []
   }
 
   getTotalTransactions(fid: number): number {
@@ -60,6 +89,12 @@ class TransactionHistory {
       latestTransaction: this.getLatestTransaction(fid),
       badges: this.getTransactionBadges(fid)
     }
+  }
+
+  // Clear all transaction history (for testing/reset)
+  clearAll(): void {
+    if (typeof window === 'undefined') return
+    localStorage.removeItem(this.storageKey)
   }
 }
 

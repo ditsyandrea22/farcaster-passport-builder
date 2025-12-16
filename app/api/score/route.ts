@@ -93,7 +93,6 @@ async function getTxCount(address: string): Promise<number> {
     const json = await res.json()
     return Number.parseInt(json.result, 16)
   } catch (error) {
-    console.error("Failed to get tx count:", error)
     return 0
   }
 }
@@ -115,7 +114,6 @@ export async function GET(req: Request) {
   try {
     // Validate required API key
     if (!process.env.NEYNAR_API_KEY) {
-      console.error("NEYNAR_API_KEY not configured")
       return NextResponse.json({ 
         error: "API configuration error: NEYNAR_API_KEY not found" 
       }, { status: 500, headers })
@@ -129,7 +127,6 @@ export async function GET(req: Request) {
     })
 
     if (!res.ok) {
-      console.error("Neynar API error:", await res.text())
       return NextResponse.json({ error: "Failed to fetch Farcaster data" }, { status: 500, headers })
     }
 
@@ -203,7 +200,6 @@ export async function GET(req: Request) {
       { headers },
     )
   } catch (error) {
-    console.error("Score API error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500, headers })
   }
 }

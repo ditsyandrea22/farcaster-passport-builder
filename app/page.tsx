@@ -1,19 +1,30 @@
 "use client"
 
-import { EnhancedPassportGenerator } from "@/components/enhanced-passport-generator"
+import dynamicImport from 'next/dynamic'
 import { ThemeToggle } from "@/components/theme-toggle"
-import { AnalyticsTracker } from "@/components/analytics-tracker"
-import { useAnalytics } from "@/components/analytics-tracker"
-import { useEffect } from "react"
+
+// Dynamic import to avoid SSR issues with Frame hooks
+const EnhancedPassportGenerator = dynamicImport(
+  () => import('@/components/enhanced-passport-generator').then(mod => ({ default: mod.EnhancedPassportGenerator })),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    )
+  }
+)
+
+const AnalyticsTracker = dynamicImport(
+  () => import('@/components/analytics-tracker').then(mod => ({ default: mod.AnalyticsTracker })),
+  { ssr: false }
+)
+
+// Disable static optimization for this page due to Frame hooks
+export const dynamic = 'force-dynamic'
 
 export default function Home() {
-  const { trackFrameView } = useAnalytics()
-
-  // Track frame view when component mounts
-  useEffect(() => {
-    trackFrameView()
-  }, [trackFrameView])
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-violet-100 via-fuchsia-100 to-cyan-100 dark:from-gray-950 dark:via-purple-950 dark:to-indigo-950">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

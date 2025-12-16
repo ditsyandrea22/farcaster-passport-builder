@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react"
 import { AuthKitProvider } from "@farcaster/auth-kit"
-import { useFrame } from "@/providers/frame-provider"
 
 interface AuthContextType {
   // Authentication state
@@ -39,8 +38,6 @@ interface AuthKitProviderProps {
 
 // Enhanced Auth Kit Provider with FarCaster Frame integration
 export function EnhancedAuthKitProvider({ children }: AuthKitProviderProps) {
-  const { isFrame, wallet, isWalletConnected, user } = useFrame()
-  
   // Auth Kit configuration for Base mainnet following official docs
   const authConfig = {
     // Base mainnet RPC
@@ -57,12 +54,7 @@ export function EnhancedAuthKitProvider({ children }: AuthKitProviderProps) {
 
   return (
     <AuthKitProvider config={authConfig}>
-      <AuthKitContextProvider 
-        isFrame={isFrame} 
-        isWalletConnected={isWalletConnected}
-        frameUser={user}
-        frameWallet={wallet}
-      >
+      <AuthKitContextProvider>
         {children}
       </AuthKitContextProvider>
     </AuthKitProvider>
@@ -71,17 +63,9 @@ export function EnhancedAuthKitProvider({ children }: AuthKitProviderProps) {
 
 // Internal context provider that combines Auth Kit with Frame context
 function AuthKitContextProvider({ 
-  children, 
-  isFrame, 
-  isWalletConnected,
-  frameUser,
-  frameWallet
+  children
 }: { 
   children: ReactNode
-  isFrame: boolean
-  isWalletConnected: boolean
-  frameUser: any
-  frameWallet: any
 }) {
   const [profile, setProfile] = useState<any | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -93,20 +77,12 @@ function AuthKitContextProvider({
       setError(null)
       setIsLoading(true)
       
-      if (isFrame && isWalletConnected) {
-        // In Frame context, authentication is handled by the Frame SDK
-        console.log("🔗 Frame context detected, using Frame authentication")
-        return
-      }
-      
       // For non-Frame context, we would use Auth Kit's sign-in functionality
       // This would integrate with SIWF (Sign-In With Farcaster) as per documentation
-      console.log("📱 Using Auth Kit authentication")
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Sign in failed"
       setError(errorMessage)
-      console.error("Sign in error:", err)
     } finally {
       setIsLoading(false)
     }
@@ -124,65 +100,23 @@ function AuthKitContextProvider({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Sign out failed"
       setError(errorMessage)
-      console.error("Sign out error:", err)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Load user profile data
-  useEffect(() => {
-    const loadProfile = async () => {
-      const fid = frameUser?.fid
-      if (fid && !profile) {
-        try {
-          const response = await fetch(`/api/score?fid=${fid}`)
-          const profileData = await response.json()
-          setProfile(profileData)
-        } catch (err) {
-          console.error("Failed to load profile:", err)
-        }
-      }
-    }
-
-    loadProfile()
-  }, [frameUser?.fid, profile])
-
-  // Combine Frame context with profile data
-  const combinedProfile = {
-    // Frame context data
-    fid: frameUser?.fid || null,
-    username: frameUser?.username || null,
-    displayName: frameUser?.displayName || null,
-    pfpUrl: frameUser?.pfpUrl || null,
-    bio: frameUser?.bio || null,
-    powerBadge: frameUser?.powerBadge || false,
-    
-    // Wallet data
-    custody: frameWallet?.address || null,
-    walletAddress: frameWallet?.address || null,
-    
-    // Profile data from API
-    ...profile,
-    
-    // Context flags
-    isFrame,
-    isWalletConnected
-  }
-
-  const isAuthenticated = isFrame && isWalletConnected && !!frameUser?.fid
-
+  // Default context values for now
   const contextValue: AuthContextType = {
     // Authentication state
-    isAuthenticated,
-    profile: combinedProfile,
-    fid: combinedProfile?.fid || null,
-    username: combinedProfile?.username || null,
-    displayName: combinedProfile?.displayName || null,
-    pfpUrl: combinedProfile?.pfpUrl || null,
-    bio: combinedProfile?.bio || null,
-    powerBadge: combinedProfile?.powerBadge || null,
-    custody: combinedProfile?.custody || null,
+    isAuthenticated: false,
+    profile: null,
+    fid: null,
+    username: null,
+    displayName: null,
+    pfpUrl: null,
+    bio: null,
+    powerBadge: null,
+    custody: null,
     
     // Enhanced features
     signIn,

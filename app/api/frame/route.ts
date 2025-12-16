@@ -19,8 +19,6 @@ export async function POST(req: Request) {
     const protocol = host?.includes("localhost") ? "http" : "https"
     const baseUrl = `${protocol}://${host}`
 
-    console.log("Frame request - host:", host, "fid:", fid)
-
     if (!fid) {
       return NextResponse.json(
         {
@@ -34,8 +32,6 @@ export async function POST(req: Request) {
     // Fetch score data using dynamic base URL
     const scoreRes = await fetch(`${baseUrl}/api/score?fid=${fid}`)
     const scoreData = await scoreRes.json()
-
-    console.log("Score data:", scoreData)
 
     if (scoreData.error) {
       return NextResponse.json(
@@ -80,7 +76,6 @@ export async function POST(req: Request) {
       { headers: corsHeaders },
     )
   } catch (error) {
-    console.error("Frame error:", error)
     const host = req.headers.get("host") || "localhost:3000"
     const protocol = host.includes("localhost") ? "http" : "https"
     const baseUrl = `${protocol}://${host}`

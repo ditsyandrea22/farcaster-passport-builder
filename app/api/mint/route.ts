@@ -98,15 +98,6 @@ export async function POST(req: Request) {
       }, { status: 500, headers: corsHeaders })
     }
 
-    console.log("Mint request processed:", {
-      fid: fidNum,
-      userAddress: userAddress || "auto (Frame)",
-      isFrameRequest,
-      contractAddress,
-      mintFee: mintFeeWei.toString(),
-      estimatedGas: estimatedGasWei.toString()
-    })
-
     // Get transaction history for enhanced sharing
     const txSummary = transactionHistory.getTransactionSummary(fidNum)
     
@@ -144,15 +135,6 @@ export async function POST(req: Request) {
           },
           // Enhanced share data for post-mint sharing
           shareData: enhancedShareData
-        },
-        // Additional context for debugging
-        debug: {
-          fid: fidNum,
-          score: data.score,
-          badge: data.badge,
-          userAddress: userAddress || "auto (Frame)",
-          timestamp: new Date().toISOString(),
-          transactionHistory: txSummary
         }
       }
 
@@ -181,8 +163,6 @@ export async function POST(req: Request) {
       return NextResponse.json(tx, { headers: corsHeaders })
     }
   } catch (error) {
-    console.error("Mint API error:", error)
-    
     // Provide more specific error messages
     let errorMessage = "Internal server error"
     let statusCode = 500
@@ -231,6 +211,4 @@ export function trackSuccessfulMint(fid: number, txHash: string, score: number, 
     badge,
     userAddress
   })
-  
-  console.log(`Transaction tracked for FID ${fid}: ${txHash}`)
 }

@@ -1,18 +1,12 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { EnhancedAuthKitProvider } from "@/providers/auth-kit-provider"
 import { FrameProvider } from "@/providers/frame-provider"
 import { FrameInitializer } from "@/components/frame-initializer"
-import { DebugFrame } from "@/components/debug-frame"
 import { NotificationSystem } from "@/components/notification-system"
-import { ServiceWorkerRegistration } from "@/components/service-worker-registration"
 import { ErrorBoundary } from "@/components/error-boundary"
-
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Farcaster Reputation Passport",
@@ -88,11 +82,9 @@ export default function RootLayout({
         <ErrorBoundary>
           <EnhancedAuthKitProvider>
             <FrameProvider>
-              <ServiceWorkerRegistration />
               <FrameInitializer />
               {children}
               <NotificationSystem />
-              <DebugFrame />
               <Analytics />
             </FrameProvider>
           </EnhancedAuthKitProvider>
