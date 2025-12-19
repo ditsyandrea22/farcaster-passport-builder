@@ -7,26 +7,26 @@
   "frame": {
     "version": "next",
     "name": "Farcaster Reputation Passport",
-    "iconUrl": "https://farcaster-passport-builder.vercel.app/icon.jpg",
-    "homeUrl": "https://farcaster-passport-builder.vercel.app",
-    "imageUrl": "https://farcaster-passport-builder.vercel.app/api/frame/image",
+    "iconUrl": "/icon.jpg",
+    "homeUrl": "/",
+    "imageUrl": "/api/frame/image",
     "buttonTitle": "Build Passport",
-    "splashImageUrl": "https://farcaster-passport-builder.vercel.app/splash.jpg",
+    "splashImageUrl": "/splash.jpg",
     "splashBackgroundColor": "#000000",
-    "webhookUrl": "https://farcaster-passport-builder.vercel.app/api/frame",
+    "webhookUrl": "/api/frame",
     "subtitle": "Generate Your On-Chain Reputation",
     "description": "Create and mint your decentralized reputation passport with advanced scoring powered by Farcaster social data and Base blockchain activity.",
     "screenshotUrls": [
-      "https://farcaster-passport-builder.vercel.app/placeholder.jpg",
-      "https://farcaster-passport-builder.vercel.app/placeholder-logo.png"
+      "/placeholder.jpg",
+      "/placeholder-logo.png"
     ],
     "primaryCategory": "social",
     "tags": ["passport", "identity", "reputation", "nft", "farcaster", "base", "blockchain"],
-    "heroImageUrl": "https://farcaster-passport-builder.vercel.app/placeholder.jpg",
+    "heroImageUrl": "/placeholder.jpg",
     "tagline": "Your Decentralized Identity & Reputation Hub",
     "ogTitle": "Farcaster Reputation Passport - Generate Your On-Chain Reputation",
     "ogDescription": "Create and mint your decentralized reputation passport with advanced scoring powered by Farcaster social data and Base blockchain activity.",
-    "ogImageUrl": "https://farcaster-passport-builder.vercel.app/placeholder.jpg",
-    "castShareUrl": "https://farcaster-passport-builder.vercel.app"
+    "ogImageUrl": "/placeholder.jpg",
+    "castShareUrl": "/"
   }
 }
