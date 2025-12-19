@@ -13,10 +13,10 @@ export const metadata: Metadata = {
   description: "Generate your on-chain reputation passport powered by Farcaster + Base",
   other: {
     "fc:frame": "vNext",
-    "fc:frame:image": "https://your-domain.com/api/frame/image",
+    "fc:frame:image": "https://farcaster-passport-builder.vercel.app/api/frame/image",
     "fc:frame:button:1": "Check Reputation",
     "fc:frame:button:1:action": "link",
-    "fc:frame:button:1:target": "https://your-domain.com",
+    "fc:frame:button:1:target": "https://farcaster-passport-builder.vercel.app",
   },
   icons: {
     icon: [
