@@ -6,6 +6,9 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
+import { useAccount, useWriteContract } from "wagmi"
+import { REPUTATION_PASSPORT_ABI } from "@/lib/contract-abi"
+import { CheckCircle, AlertCircle, Wallet } from "lucide-react"
 
 interface PassportData {
   fid: number
@@ -31,6 +34,13 @@ export function PassportGenerator() {
   const [loading, setLoading] = useState(false)
   const [passport, setPassport] = useState<PassportData | null>(null)
   const [error, setError] = useState("")
+  const [minting, setMinting] = useState(false)
+  const [mintError, setMintError] = useState("")
+  const [txHash, setTxHash] = useState<string | null>(null)
+  const [mintSuccess, setMintSuccess] = useState(false)
+  
+  const { isConnected, address } = useAccount()
+  const { writeContractAsync } = useWriteContract()
 
   const generatePassport = async () => {
     if (!fid) {
@@ -40,6 +50,9 @@ export function PassportGenerator() {
 
     setLoading(true)
     setError("")
+    setMintSuccess(false)
+    setMintError("")
+    setTxHash(null)
 
     try {
       const res = await fetch(`/api/score?fid=${fid}`)
@@ -56,6 +69,51 @@ export function PassportGenerator() {
       console.error("Generate error:", err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleMint = async () => {
+    if (!passport || !isConnected || !address) {
+      setMintError("Please connect your wallet first")
+      return
+    }
+
+    const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    if (!contractAddress || contractAddress === "0x0000000000000000000000000000000000000000") {
+      setMintError("Contract address not configured. Please check your environment variables.")
+      return
+    }
+
+    setMinting(true)
+    setMintError("")
+    setTxHash(null)
+    setMintSuccess(false)
+
+    try {
+      console.log("Minting passport with:", {
+        to: address,
+        fid: passport.fid,
+        score: passport.score,
+        badge: passport.badge,
+        contractAddress
+      })
+
+      const txHash = await writeContractAsync({
+        address: contractAddress as `0x${string}`,
+        abi: REPUTATION_PASSPORT_ABI,
+        functionName: "mintPassport",
+        args: [address, BigInt(passport.fid), BigInt(passport.score), passport.badge],
+      })
+
+      setTxHash(txHash)
+      setMintSuccess(true)
+      console.log("Transaction sent:", txHash)
+    } catch (err) {
+      console.error("Mint error:", err)
+      const errorMessage = err instanceof Error ? err.message : "Failed to mint passport"
+      setMintError(errorMessage)
+    } finally {
+      setMinting(false)
     }
   }
 
@@ -81,6 +139,10 @@ export function PassportGenerator() {
     return "text-gray-400"
   }
 
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`
+  }
+
   return (
     <div className="space-y-6">
       <Card className="p-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-purple-200/50 dark:border-purple-800/50 shadow-xl">
@@ -90,8 +152,8 @@ export function PassportGenerator() {
               type="number"
               placeholder="Enter your Farcaster ID (FID)"
               value={fid}
-              onChange={(e) => setFid(e.target.value)}
-              onKeyDown={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFid(e.target.value)}
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === "Enter") {
                   generatePassport()
                 }
@@ -229,12 +291,72 @@ export function PassportGenerator() {
             </div>
 
             <div className="pt-4 space-y-2">
+              {/* Wallet Status */}
+              {!isConnected && (
+                <div className="p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-yellow-600" />
+                  <p className="text-sm text-yellow-700">Connect your wallet to mint the NFT</p>
+                </div>
+              )}
+              
+              {isConnected && address && (
+                <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-green-600" />
+                  <p className="text-sm text-green-700">Connected: {formatAddress(address)}</p>
+                </div>
+              )}
+
+              {/* Mint Button */}
               <Button
+                onClick={handleMint}
+                disabled={minting || !isConnected}
                 className="w-full bg-white text-purple-600 hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-lg font-semibold"
                 size="lg"
               >
-                🎫 Mint Passport NFT
+                {minting ? (
+                  <>
+                    <Spinner className="mr-2" />
+                    Minting Passport...
+                  </>
+                ) : mintSuccess ? (
+                  <>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Passport Minted!
+                  </>
+                ) : (
+                  "🎫 Mint Passport NFT"
+                )}
               </Button>
+
+              {/* Mint Status Messages */}
+              {mintSuccess && txHash && (
+                <div className="p-3 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <p className="text-sm text-green-600 dark:text-green-400">
+                      Passport NFT minted successfully!
+                    </p>
+                  </div>
+                  <a
+                    href={`https://basescan.org/tx/${txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-green-700 underline hover:text-green-800 mt-1 block"
+                  >
+                    View transaction: {txHash.slice(0, 10)}...
+                  </a>
+                </div>
+              )}
+
+              {mintError && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <p className="text-sm text-red-600 dark:text-red-400">{mintError}</p>
+                  </div>
+                </div>
+              )}
+
               <Button
                 variant="outline"
                 className="w-full border-white/30 text-white hover:bg-white/10 transition-all duration-300 bg-transparent"

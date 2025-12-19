@@ -5,33 +5,15 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { WalletConnection, TransactionSender, TransactionHistory } from "@/components/wallet-connection"
 import { TransactionTracker, NFTTokenTracker } from "@/components/transaction-tracker"
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { useState } from 'react'
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger,
-  DropdownMenuSeparator 
-} from "@/components/ui/dropdown-menu"
-import { 
-  Wallet, 
-  LogOut, 
-  Copy, 
-  ExternalLink,
-  ChevronDown,
-  CheckCircle,
-  Loader2
-} from "lucide-react"
+import { Wallet, LogOut } from "lucide-react"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-// Simple wallet button component
-function WalletButton() {
-  const { address, isConnected, connector } = useAccount()
-  const { connect, connectors, isLoading } = useConnect()
+function SimpleWalletButton() {
+  const { address, isConnected } = useAccount()
+  const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
 
   const formatAddress = (addr: string) => {
@@ -56,7 +38,7 @@ function WalletButton() {
           variant="outline"
           size="sm"
           onClick={() => disconnect()}
-          className="hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+          className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all duration-200"
         >
           <LogOut className="h-4 w-4" />
         </Button>
@@ -72,13 +54,10 @@ function WalletButton() {
           connect({ connector: connectors[0] })
         }
       }}
-      disabled={isLoading}
     >
       <div className="flex items-center gap-2">
         <Wallet className="h-4 w-4" />
-        <span className="font-medium">
-          {isLoading ? 'Connecting...' : 'Connect Wallet'}
-        </span>
+        <span className="font-medium">Connect Wallet</span>
       </div>
     </Button>
   )
@@ -94,7 +73,7 @@ export default function Home() {
       </div>
 
       <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-        <WalletButton />
+        <SimpleWalletButton />
         <ThemeToggle />
       </div>
 
