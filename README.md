@@ -4,6 +4,7 @@ A production-ready full-stack application for generating and minting on-chain re
 
 ## Features
 
+### Core Features
 - **Accurate Neynar Scoring**: Advanced scoring algorithm with engagement rate, power badge, verified addresses
 - **Complete FID Metadata**: Profile picture, bio, verified addresses, and full user data
 - **Professional UI**: Beautiful gradient backgrounds with dark mode, smooth animations, and loading states
@@ -14,6 +15,16 @@ A production-ready full-stack application for generating and minting on-chain re
 - **Dark Mode**: Full dark mode support with theme toggle
 - **App Icons**: Professional icons and splash screen for Frame mini app
 
+### 🚀 NEW: Wallet Integration & Transaction Tracking
+- **Multi-Wallet Support**: Connect using Farcaster Wallet Kit and Reown Wallet Kit
+- **Real-time Transaction Tracking**: Track on-chain transactions using Etherscan V2 API
+- **Transaction History**: View ETH transfers, ERC-20 token transfers, and NFT transfers
+- **Batch Transactions**: Support for EIP-5792 wallet_sendCalls (multiple transactions in one confirmation)
+- **Gas Optimization**: Real-time gas price tracking and optimization suggestions
+- **Multi-Chain Support**: Base mainnet with EVM compatibility
+- **Transaction Analytics**: Detailed transaction insights with status, value, and timing
+- **NFT Mint Tracking**: Track NFT minting transactions and collection activity
+
 ## Tech Stack
 
 - **Frontend**: Next.js 16, React 19, TailwindCSS v4
@@ -21,6 +32,9 @@ A production-ready full-stack application for generating and minting on-chain re
 - **Blockchain**: Base (L2), Solidity, ERC-721
 - **Storage**: Upstash Redis for caching
 - **Frame**: Farcaster Frames V2
+- **Wallet Integration**: Wagmi, Farcaster Mini App SDK, Reown Wallet Kit
+- **Transaction Tracking**: Etherscan V2 API, Real-time analytics
+- **Web3 Libraries**: Viem, Ethers.js, TanStack Query
 
 ## Getting Started
 
@@ -123,6 +137,8 @@ Badges are automatically assigned based on activity:
 - `POST /api/mint` - Initiate NFT minting transaction
 - `GET /api/metadata/[tokenId]` - NFT metadata endpoint
 - `GET /api/passport-nft/[tokenId]` - Generate NFT image
+- `GET /api/transactions` - Transaction tracking endpoint
+- `POST /api/transactions` - Batch transaction tracking
 
 ## Frame V2 Configuration
 
