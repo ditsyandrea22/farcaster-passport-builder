@@ -2,64 +2,169 @@
 
 import { PassportGenerator } from "@/components/passport-generator"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { WalletConnection, TransactionSender, TransactionHistory } from "@/components/wallet-connection"
-import { TransactionTracker, NFTTokenTracker } from "@/components/transaction-tracker"
+import { TransactionSender, TransactionHistory } from "@/components/wallet-connection"
+import { TransactionTracker } from "@/components/transaction-tracker"
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { Button } from "@/components/ui/button"
-import { Wallet, LogOut } from "lucide-react"
+import { Wallet, LogOut, ChevronDown, Send, History, BarChart3 } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-function SimpleWalletButton() {
+function WalletDropdown() {
   const { address, isConnected } = useAccount()
   const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
+  const [isOpen, setIsOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<'wallet' | 'track' | 'send'>('wallet')
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const formatAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`
   }
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   if (isConnected && address) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="relative" ref={dropdownRef}>
         <Button 
           variant="outline" 
           className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/30 hover:border-green-400/50 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 ease-out hover:scale-105 backdrop-blur-md animate-fade-in"
+          onClick={() => setIsOpen(!isOpen)}
         >
           <div className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-green-600" />
             <span className="font-medium text-green-700 dark:text-green-400">
               {formatAddress(address)}
             </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </div>
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => disconnect()}
-          className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all duration-200"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
+        
+        {isOpen && (
+          <div className="absolute right-0 mt-2 w-[400px] max-h-[500px] overflow-auto bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 animate-fade-in">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium">Connected</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { disconnect(); setIsOpen(false); }}
+                  className="hover:bg-red-50 hover:text-red-600 text-xs"
+                >
+                  <LogOut className="h-3 w-3 mr-1" />
+                  Disconnect
+                </Button>
+              </div>
+            </div>
+            
+            <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex gap-1">
+                <Button
+                  variant={activeTab === 'wallet' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => setActiveTab('wallet')}
+                >
+                  <Wallet className="h-3 w-3 mr-1" />
+                  Wallet
+                </Button>
+                <Button
+                  variant={activeTab === 'track' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => setActiveTab('track')}
+                >
+                  <BarChart3 className="h-3 w-3 mr-1" />
+                  Track
+                </Button>
+                <Button
+                  variant={activeTab === 'send' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => setActiveTab('send')}
+                >
+                  <Send className="h-3 w-3 mr-1" />
+                  Send
+                </Button>
+              </div>
+            </div>
+            
+            <div className="p-4 max-h-[350px] overflow-auto">
+              {activeTab === 'wallet' && (
+                <div className="space-y-4">
+                  <TransactionHistory />
+                </div>
+              )}
+              {activeTab === 'track' && (
+                <div className="space-y-4">
+                  <TransactionTracker />
+                </div>
+              )}
+              {activeTab === 'send' && (
+                <div className="space-y-4">
+                  <TransactionSender onTransactionSent={(txHash) => console.log('Transaction sent:', txHash)} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
 
   return (
-    <Button 
-      className="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 ease-out hover:scale-105 backdrop-blur-md animate-fade-in hover:animate-bounce-subtle"
-      onClick={() => {
-        if (connectors.length > 0) {
-          connect({ connector: connectors[0] })
-        }
-      }}
-    >
-      <div className="flex items-center gap-2">
-        <Wallet className="h-4 w-4" />
-        <span className="font-medium">Connect Wallet</span>
-      </div>
-    </Button>
+    <div className="relative" ref={dropdownRef}>
+      <Button 
+        className="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 ease-out hover:scale-105 backdrop-blur-md animate-fade-in"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center gap-2">
+          <Wallet className="h-4 w-4" />
+          <span className="font-medium">Connect Wallet</span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </Button>
+      
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 animate-fade-in">
+          <div className="p-4">
+            <h3 className="font-semibold mb-3">Connect Wallet</h3>
+            <p className="text-sm text-muted-foreground mb-4">Choose your preferred wallet to connect and start transacting</p>
+            <div className="space-y-2">
+              {connectors.map((connector) => (
+                <Button
+                  key={connector.id}
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    connect({ connector })
+                    setIsOpen(false)
+                  }}
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  {connector.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -73,7 +178,7 @@ export default function Home() {
       </div>
 
       <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-        <SimpleWalletButton />
+        <WalletDropdown />
         <ThemeToggle />
       </div>
 
@@ -89,69 +194,6 @@ export default function Home() {
           </div>
 
           <PassportGenerator />
-
-          {/* Wallet Integration Section */}
-          <div className="mt-16 space-y-8">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl font-bold text-balance">Wallet Integration</h2>
-              <p className="text-lg text-muted-foreground text-balance max-w-2xl mx-auto">
-                Connect your wallet to track transactions and interact with Base network
-              </p>
-            </div>
-
-            <div className="max-w-4xl mx-auto">
-              <Tabs defaultValue="connect" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="connect">Connect Wallet</TabsTrigger>
-                  <TabsTrigger value="track">Track Transactions</TabsTrigger>
-                  <TabsTrigger value="send">Send Transactions</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="connect" className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <WalletConnection onTransactionSent={(txHash) => console.log('Transaction sent:', txHash)} />
-                    <TransactionHistory />
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="track" className="space-y-6">
-                  <TransactionTracker />
-                </TabsContent>
-
-                <TabsContent value="send" className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <TransactionSender onTransactionSent={(txHash) => console.log('Transaction sent:', txHash)} />
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Batch Transaction Support</CardTitle>
-                        <CardDescription>
-                          Support for EIP-5792 wallet_sendCalls
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                          <h4 className="font-semibold">Features:</h4>
-                          <ul className="text-sm text-muted-foreground space-y-1">
-                            <li>• Multiple transactions in one confirmation</li>
-                            <li>• Approve + swap operations</li>
-                            <li>• Complex DeFi interactions</li>
-                            <li>• NFT batch minting</li>
-                          </ul>
-                        </div>
-                        <div className="space-y-2">
-                          <h4 className="font-semibold">Supported Chains:</h4>
-                          <ul className="text-sm text-muted-foreground space-y-1">
-                            <li>• Base Mainnet</li>
-                            <li>• All EVM chains</li>
-                          </ul>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 animate-fade-in-up">
             <div className="group p-6 bg-white/80 dark:bg-gray-900/80 rounded-xl backdrop-blur-md border border-purple-200/50 dark:border-purple-800/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
