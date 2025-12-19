@@ -1,8 +1,10 @@
+"use client"
+
 import { PassportGenerator } from "@/components/passport-generator"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { WalletConnection, TransactionSender, TransactionHistory } from "@/components/wallet-connection"
 import { TransactionTracker, NFTTokenTracker } from "@/components/transaction-tracker"
-import { useAccount } from "wagmi"
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
