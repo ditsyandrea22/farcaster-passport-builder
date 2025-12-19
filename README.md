@@ -75,6 +75,29 @@ npm run dev
 
 6. Open [http://localhost:3000](http://localhost:3000)
 
+### Wallet Integration Setup
+
+For wallet integration and transaction tracking features, see [SETUP_WALLET.md](SETUP_WALLET.md) for detailed setup instructions including:
+
+- API key configuration (Etherscan V2, Reown)
+- Wallet connection troubleshooting
+- Transaction tracking setup
+- Supported wallets list
+
+Quick start:
+
+\`\`\`bash
+# Install dependencies (wallet packages included)
+npm install
+
+# Add API keys to .env.local
+ETHERSCAN_API_KEY=your_key_here
+NEXT_PUBLIC_REOWN_PROJECT_ID=your_project_id_here
+
+# Run development server
+npm run dev
+\`\`\`
+
 ### Deploy Smart Contract
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
