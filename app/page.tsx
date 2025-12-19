@@ -1,0 +1,57 @@
+import { PassportGenerator } from "@/components/passport-generator"
+import { ThemeToggle } from "@/components/theme-toggle"
+
+export default function Home() {
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-violet-100 via-fuchsia-100 to-cyan-100 dark:from-gray-950 dark:via-purple-950 dark:to-indigo-950">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-400/40 dark:bg-purple-600/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl animate-blob"></div>
+        <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-fuchsia-400/40 dark:bg-blue-600/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-cyan-400/40 dark:bg-pink-600/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+
+      <div className="relative container mx-auto px-4 py-16">
+        <div className="max-w-4xl mx-auto text-center space-y-8">
+          <div className="space-y-4 animate-fade-in">
+            <h1 className="text-5xl md:text-6xl font-bold text-balance bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
+              Farcaster Reputation Passport
+            </h1>
+            <p className="text-xl text-muted-foreground text-balance max-w-2xl mx-auto">
+              Your on-chain reputation identity powered by Farcaster + Base
+            </p>
+          </div>
+
+          <PassportGenerator />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 animate-fade-in-up">
+            <div className="group p-6 bg-white/80 dark:bg-gray-900/80 rounded-xl backdrop-blur-md border border-purple-200/50 dark:border-purple-800/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">🎯</div>
+              <h3 className="font-semibold mb-2 text-lg">Real Data</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Accurate score from Farcaster activity, engagement, and Base transaction history
+              </p>
+            </div>
+            <div className="group p-6 bg-white/80 dark:bg-gray-900/80 rounded-xl backdrop-blur-md border border-blue-200/50 dark:border-blue-800/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">⚡</div>
+              <h3 className="font-semibold mb-2 text-lg">Instant Mint</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Generate and mint your passport NFT on Base network in seconds
+              </p>
+            </div>
+            <div className="group p-6 bg-white/80 dark:bg-gray-900/80 rounded-xl backdrop-blur-md border border-pink-200/50 dark:border-pink-800/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">🔗</div>
+              <h3 className="font-semibold mb-2 text-lg">Shareable</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Share your reputation score and passport directly to Farcaster
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  )
+}

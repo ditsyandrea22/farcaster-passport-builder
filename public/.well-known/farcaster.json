@@ -1,0 +1,21 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjEsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0",
+    "payload": "eyJkb21haW4iOiJ5b3VyLWRvbWFpbi5jb20ifQ",
+    "signature": "MHg..."
+  },
+  "frame": {
+    "version": "next",
+    "imageUrl": "https://your-domain.com/api/frame/image",
+    "button": {
+      "title": "Check Reputation",
+      "action": {
+        "type": "launch_frame",
+        "name": "Farcaster Reputation Passport",
+        "url": "https://your-domain.com",
+        "splashImageUrl": "https://your-domain.com/splash.jpg",
+        "splashBackgroundColor": "#8b5cf6"
+      }
+    }
+  }
+}
