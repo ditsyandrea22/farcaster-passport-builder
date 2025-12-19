@@ -1,7 +1,32 @@
 {
   "accountAssociation": {
-    "header": "eyJmaWQiOjI1ODI1MCwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDFEODE0RmNEOTM4NzRkZjI5QTczNzM5M2VkN2M3ZUQyZUVEN2MzYTYifQ",
+    "header": "eyJmaWQiOjI1ODI1MCwidHlwZSI6ImF1dGgiLCJrZXkiOiIweGEwNmJjRTYyNTU2NjVmQzFGODVBMDU5NzVhOWI2MzgwYjRlRTQ4ODkifQ",
     "payload": "eyJkb21haW4iOiJmYXJjYXN0ZXItcGFzc3BvcnQtYnVpbGRlci52ZXJjZWwuYXBwIn0",
-    "signature": "guFn/mC51tTvJLORRH2hb91UV/dtUYdp5KkAt2UDtLMXaePjuL+5zI7HLo0xUaaCYyw0I+87CSR0SEsP2Ruarxw="
+    "signature": "P8wyN0e2aJcgdsRchMx3p0KV7a46kgNQfFlVlLA9tI5riSglpF8CYncy9QXN3Hn3zypMxk4Z0ataRHIQ7A3S1hs="
+  },
+  "frame": {
+    "version": "next",
+    "name": "Farcaster Passport Builder",
+    "iconUrl": "https://farcaster-passport-builder.vercel.app/icon.jpg",
+    "homeUrl": "https://farcaster-passport-builder.vercel.app",
+    "imageUrl": "https://farcaster-passport-builder.vercel.app/api/frame/image",
+    "buttonTitle": "Build Passport",
+    "splashImageUrl": "https://farcaster-passport-builder.vercel.app/splash.jpg",
+    "splashBackgroundColor": "#000000",
+    "webhookUrl": "https://farcaster-passport-builder.vercel.app/api/frame",
+    "subtitle": "Build Your Digital Identity",
+    "description": "Create and manage your decentralized passport with reputation scoring and NFT verification on the Farcaster ecosystem.",
+    "screenshotUrls": [
+      "https://farcaster-passport-builder.vercel.app/screenshot1.jpg",
+      "https://farcaster-passport-builder.vercel.app/screenshot2.jpg"
+    ],
+    "primaryCategory": "social",
+    "tags": ["passport", "identity", "reputation", "nft", "farcaster"],
+    "heroImageUrl": "https://farcaster-passport-builder.vercel.app/hero.jpg",
+    "tagline": "Your Decentralized Identity Hub",
+    "ogTitle": "Farcaster Passport Builder - Build Your Digital Identity",
+    "ogDescription": "Create and manage your decentralized passport with reputation scoring and NFT verification on the Farcaster ecosystem.",
+    "ogImageUrl": "https://farcaster-passport-builder.vercel.app/og-image.jpg",
+    "castShareUrl": "https://farcaster-passport-builder.vercel.app/share"
   }
 }
