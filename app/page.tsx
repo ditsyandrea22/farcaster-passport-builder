@@ -4,9 +4,85 @@ import { PassportGenerator } from "@/components/passport-generator"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { WalletConnection, TransactionSender, TransactionHistory } from "@/components/wallet-connection"
 import { TransactionTracker, NFTTokenTracker } from "@/components/transaction-tracker"
+import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { useState } from 'react'
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator 
+} from "@/components/ui/dropdown-menu"
+import { 
+  Wallet, 
+  LogOut, 
+  Copy, 
+  ExternalLink,
+  ChevronDown,
+  CheckCircle,
+  Loader2
+} from "lucide-react"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+// Simple wallet button component
+function WalletButton() {
+  const { address, isConnected, connector } = useAccount()
+  const { connect, connectors, isLoading } = useConnect()
+  const { disconnect } = useDisconnect()
+
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`
+  }
+
+  if (isConnected && address) {
+    return (
+      <div className="flex items-center gap-2">
+        <Button 
+          variant="outline" 
+          className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/30 hover:border-green-400/50 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 ease-out hover:scale-105 backdrop-blur-md animate-fade-in"
+        >
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-green-600" />
+            <span className="font-medium text-green-700 dark:text-green-400">
+              {formatAddress(address)}
+            </span>
+          </div>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => disconnect()}
+          className="hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <Button 
+      className="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 ease-out hover:scale-105 backdrop-blur-md animate-fade-in hover:animate-bounce-subtle"
+      onClick={() => {
+        if (connectors.length > 0) {
+          connect({ connector: connectors[0] })
+        }
+      }}
+      disabled={isLoading}
+    >
+      <div className="flex items-center gap-2">
+        <Wallet className="h-4 w-4" />
+        <span className="font-medium">
+          {isLoading ? 'Connecting...' : 'Connect Wallet'}
+        </span>
+      </div>
+    </Button>
+  )
+}
 
 export default function Home() {
   return (
@@ -17,7 +93,8 @@ export default function Home() {
         <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-cyan-400/40 dark:bg-pink-600/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+        <WalletButton />
         <ThemeToggle />
       </div>
 
